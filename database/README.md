@@ -35,11 +35,11 @@ the PowerShell session that runs Maven or the application:
 $env:DB_URL = 'jdbc:sqlserver://localhost:1433;databaseName=RentalApartmentDev;encrypt=true;trustServerCertificate=true'
 $env:DB_USERNAME = 'YOUR_SQL_LOGIN'
 $env:DB_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host 'SQL password' -AsSecureString)).Password
-.\mvnw.cmd test
+.\mvnw.cmd spring-boot:run
 ```
 
 Replace the server and port for your own machine. These
 PowerShell variables last only for that terminal session. When starting from
 an IDE, set the same three variables in its run configuration. Spring Boot
-does not load a `.env` file automatically. The database integration tests are
-skipped when `DB_URL` is absent. Do not commit credentials or local overrides.
+does not load a `.env` file automatically. The application validates the
+existing database schema at startup. Do not commit credentials or local overrides.
