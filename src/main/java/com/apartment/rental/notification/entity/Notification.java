@@ -30,6 +30,42 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Notification extends AuditableEntity {
 
+    public static Notification invoiceIssued(
+        User recipient,
+        Invoice invoice,
+        String eventKey,
+        String title,
+        String body
+    ) {
+        Notification notification = new Notification();
+        notification.setRecipientUser(recipient);
+        notification.setSourceType(NotificationSourceType.SYSTEM);
+        notification.setTitle(title);
+        notification.setBody(body);
+        notification.setStatus(NotificationStatus.UNREAD);
+        notification.setEventKey(eventKey);
+        notification.setInvoice(invoice);
+        return notification;
+    }
+
+    public static Notification cashPaymentRequested(
+        User admin,
+        Invoice invoice,
+        String eventKey,
+        String title,
+        String body
+    ) {
+        Notification notification = new Notification();
+        notification.setRecipientUser(admin);
+        notification.setSourceType(NotificationSourceType.SYSTEM);
+        notification.setTitle(title);
+        notification.setBody(body);
+        notification.setStatus(NotificationStatus.UNREAD);
+        notification.setEventKey(eventKey);
+        notification.setInvoice(invoice);
+        return notification;
+    }
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "recipient_user_id", nullable = false)
     private User recipientUser;

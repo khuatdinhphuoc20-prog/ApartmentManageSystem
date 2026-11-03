@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trang chủ | Rental Apartment</title>
+    <style>
+        :root { font-family: Inter, Segoe UI, Arial, sans-serif; color: #172033; background: #f4f6fb; }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; }
+        header { height: 72px; display: flex; align-items: center; justify-content: space-between; padding: 0 max(24px, calc((100vw - 1080px) / 2)); background: #fff; border-bottom: 1px solid #e4e8f0; }
+        .brand { font-weight: 800; color: #3458c5; letter-spacing: -.3px; }
+        .account { display: flex; align-items: center; gap: 16px; color: #5f6a80; font-size: 13px; }
+        .account form { margin: 0; }
+        button { border: 1px solid #d8deea; border-radius: 8px; background: #fff; padding: 9px 13px; color: #293650; font: inherit; cursor: pointer; }
+        main { width: min(100% - 40px, 1080px); margin: 56px auto; }
+        .welcome { padding: 32px; border-radius: 16px; background: #fff; border: 1px solid #e4e8f0; }
+        .badge { display: inline-block; padding: 6px 10px; border-radius: 99px; background: #e9efff; color: #3458c5; font-size: 12px; font-weight: 700; }
+        h1 { margin: 16px 0 8px; font-size: 28px; }
+        p { color: #68738a; line-height: 1.6; }
+        .note { margin-top: 24px; padding: 16px; border-radius: 10px; background: #f7f8fc; color: #58647b; font-size: 14px; }
+    </style>
+</head>
+<body>
+<header>
+    <div class="brand">Rental Apartment</div>
+    <div class="account">
+        <span><strong th:text="${email}">email</strong> · <span th:text="${role}">role</span></span>
+        <form th:action="@{/logout}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <button type="submit">Đăng xuất</button>
+        </form>
+    </div>
+</header>
+<main>
+    <section class="welcome">
+        <span class="badge">Đăng nhập thành công</span>
+        <h1>Xin chào!</h1>
+        <p>Tài khoản đã được xác thực. Khu vực Billing sẽ được nối vào trang này khi các màn hình M05 hoàn thành.</p>
+        <div class="note">Bạn đang dùng tài khoản phát triển. Vai trò hiện tại: <strong th:text="${role}">role</strong>.</div>
+        <p th:if="${role == 'ADMIN'}"><a th:href="@{/admin}">Mở khu vực Admin</a></p>
+        <p th:if="${role == 'USER'}"><a th:href="@{/customer/invoices}">Xem hóa đơn của tôi</a></p>
+    </section>
+</main>
+</body>
+</html>

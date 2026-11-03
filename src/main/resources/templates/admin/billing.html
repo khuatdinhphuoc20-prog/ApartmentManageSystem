@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Nhập điện nước | Rental Apartment</title>
+    <style>
+        :root { font-family: Inter, Segoe UI, Arial, sans-serif; color: #172033; background: #f4f6fb; }
+        * { box-sizing: border-box; }
+        body { margin: 0; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 18px max(20px, calc((100vw - 1180px) / 2)); background: #fff; border-bottom: 1px solid #e4e8f0; }
+        .brand { color: #3458c5; font-weight: 800; }
+        header a, a { color: #3458c5; text-decoration: none; }
+        main { width: min(100% - 32px, 1180px); margin: 32px auto 60px; }
+        h1 { margin: 0 0 8px; font-size: 27px; }
+        h2 { margin: 0 0 14px; font-size: 18px; }
+        .intro, .panel { padding: 22px; margin-top: 18px; border: 1px solid #e4e8f0; border-radius: 14px; background: #fff; }
+        .muted { color: #69758c; line-height: 1.55; }
+        .toolbar { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; }
+        .toolbar form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 0; }
+        label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+        input, select { min-height: 40px; padding: 8px 10px; border: 1px solid #cfd7e6; border-radius: 8px; font: inherit; }
+        input[type=number] { width: 150px; text-align: right; }
+        button { min-height: 40px; border: 0; border-radius: 8px; padding: 9px 15px; color: white; background: #3458c5; font: inherit; font-weight: 700; cursor: pointer; }
+        button.secondary { color: #293650; background: #edf1f8; }
+        .message { margin-top: 16px; padding: 12px 14px; border-radius: 8px; }
+        .success { color: #17613b; background: #eaf7ef; }
+        .error { color: #9e2525; background: #fff0f0; }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        th, td { padding: 12px 10px; border-bottom: 1px solid #e8ebf1; text-align: left; vertical-align: middle; }
+        th { color: #59657b; background: #f8f9fc; font-size: 12px; }
+        td { font-size: 14px; }
+        td small { display: block; margin-top: 4px; color: #778198; }
+        .amount { text-align: right; white-space: nowrap; }
+        .status { display: inline-block; padding: 5px 8px; border-radius: 20px; background: #fff6df; color: #805700; font-size: 12px; font-weight: 700; }
+        .status.done { background: #eaf7ef; color: #17613b; }
+        .footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 18px; }
+        @media (max-width: 640px) { header { align-items: flex-start; gap: 10px; flex-direction: column; } .intro, .panel { padding: 16px; } .footer { align-items: flex-start; flex-direction: column; } }
+    </style>
+</head>
+<body>
+<header>
+    <div class="brand">Rental Apartment · Admin</div>
+    <a th:href="@{/admin}">Trang quản trị</a>
+</header>
+<main>
+    <section class="intro">
+        <h1>Danh sách nghĩa vụ kỳ thu</h1>
+        <p class="muted">Mỗi dòng là một hợp đồng có thời gian sử dụng giao với kỳ. Hãy nhập số tiền điện và nước cuối cùng cho từng hợp đồng; hệ thống không nhập chỉ số công tơ hay tự nhân đơn giá. Kỳ thu được tạo thủ công, chưa dùng Scheduler.</p>
+        <p class="muted"><strong>Ô để trống</strong> = chưa nhập; nhập <strong>0</strong> = đã xác nhận khoản đó bằng 0. Bạn có thể lưu một phần rồi quay lại nhập tiếp.</p>
+    </section>
+
+    <div class="message success" th:if="${successMessage}" th:text="${successMessage}"></div>
+    <div class="message error" th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+    <section class="panel">
+        <div class="toolbar">
+            <form th:if="${!#lists.isEmpty(cycles)}" method="get" th:action="@{/admin/billing}">
+                <div>
+                    <label for="cycleId">Chọn kỳ đã tạo</label>
+                    <select id="cycleId" name="cycleId">
+                        <option th:each="cycle : ${cycles}"
+                                th:value="${cycle.id}"
+                                th:text="|${cycle.collectionDate} · ${cycle.status}|"
+                                th:selected="${selectedCycle != null and selectedCycle.id == cycle.id}"></option>
+                    </select>
+                </div>
+                <button class="secondary" type="submit">Mở kỳ</button>
+            </form>
+            <form method="post" th:action="@{/admin/billing/cycles}">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div>
+                    <label for="collectionDate">Tạo / cập nhật danh sách theo kỳ thu (ngày 10)</label>
+                    <input id="collectionDate" name="collectionDate" type="date" required
+                           th:max="${latestAllowedDate}"
+                           th:value="${selectedCycle != null ? selectedCycle.collectionDate : ''}">
+                </div>
+                <button type="submit">Tạo / cập nhật danh sách</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="panel" th:if="${selectedCycle != null}">
+        <h2 th:text="|Kỳ thu ${selectedCycle.collectionDate}|">Kỳ thu</h2>
+        <p class="muted">Trạng thái: <strong th:text="${selectedCycle.status}">PENDING_INPUT</strong>. Khoảng kỳ: ngày 10 của tháng trước đến trước ngày thu này.</p>
+
+        <div th:if="${#lists.isEmpty(billingForm.items)}" class="muted">
+            Kỳ này không có nghĩa vụ cần thu. Kỳ rỗng đã được đánh dấu hoàn tất.
+        </div>
+
+        <form th:if="${!#lists.isEmpty(billingForm.items)}"
+              th:object="${billingForm}"
+              th:action="@{/admin/billing/cycles/{cycleId}/items(cycleId=${selectedCycle.id})}"
+              method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Phòng / hợp đồng</th>
+                        <th>Người đại diện</th>
+                        <th>Khoảng sử dụng</th>
+                        <th class="amount">Giá thuê tháng</th>
+                        <th>Tiền điện (đồng)</th>
+                        <th>Tiền nước (đồng)</th>
+                        <th>Trạng thái xử lý</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="row, stat : *{items}">
+                        <td>
+                            <input type="hidden" th:field="*{items[__${stat.index}__].itemId}">
+                            <strong th:text="${row.roomCode}">P101</strong>
+                            <small th:text="|Hợp đồng #${row.contractId}|">Hợp đồng</small>
+                        </td>
+                        <td>
+                            <span th:text="${row.tenantName}">Tenant</span>
+                            <small th:text="${row.tenantEmail}">tenant@example.com</small>
+                        </td>
+                        <td th:text="|${row.usageFrom} đến trước ${row.usageTo}|">Khoảng sử dụng</td>
+                        <td class="amount" th:text="|${#numbers.formatInteger(row.agreedMonthlyRent, 1, 'COMMA')} đ|">0 đ</td>
+                        <td>
+                            <input type="number" min="0" step="1" placeholder="Chưa nhập"
+                                   th:field="*{items[__${stat.index}__].electricityAmount}"
+                                   th:readonly="${!row.editable}">
+                        </td>
+                        <td>
+                            <input type="number" min="0" step="1" placeholder="Chưa nhập"
+                                   th:field="*{items[__${stat.index}__].waterAmount}"
+                                   th:readonly="${!row.editable}">
+                        </td>
+                        <td>
+                            <span class="status done" th:if="${row.processingResult == 'INVOICED'}">Đã phát hành Invoice</span>
+                            <span class="status done" th:if="${row.processingResult == 'NO_CHARGE'}">NO_CHARGE (0 đồng)</span>
+                            <span class="status done" th:if="${row.processingResult == 'PENDING' and row.inputComplete}">Đã nhập đủ</span>
+                            <span class="status" th:if="${row.processingResult == 'PENDING' and !row.inputComplete}">Còn thiếu</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="footer">
+                <span class="muted">Số tiền chỉ được sửa trước khi phát hành Invoice.</span>
+                <button th:if="${selectedCycle.status.name() == 'PENDING_INPUT'}" type="submit">Lưu tiền điện nước</button>
+            </div>
+        </form>
+
+        <form th:if="${canIssue}"
+              th:action="@{/admin/billing/cycles/{cycleId}/issue(cycleId=${selectedCycle.id})}"
+              method="post" style="margin-top: 18px;">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <button type="submit">Tính tiền và phát hành Invoice</button>
+            <span class="muted">Tổng bằng 0 sẽ ghi NO_CHARGE, không tạo Invoice 0 đồng.</span>
+        </form>
+        <p class="muted" th:if="${selectedCycle.status.name() == 'PENDING_INPUT' and !canIssue and !#lists.isEmpty(billingForm.items)}">
+            Hãy nhập và lưu đủ tiền điện, tiền nước cho mọi nghĩa vụ. Nút phát hành chỉ xuất hiện sau đó.
+        </p>
+        <p class="muted" th:if="${selectedCycle.status.name() == 'COMPLETED' and !#lists.isEmpty(billingForm.items)}">
+            Kỳ đã hoàn tất; số tiền đã khóa. Kết quả từng nghĩa vụ hiển thị ở cột cuối.
+        </p>
+    </section>
+
+    <p><a th:href="@{/}">Về trang chủ</a></p>
+</main>
+</body>
+</html>

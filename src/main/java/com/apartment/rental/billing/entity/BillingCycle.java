@@ -22,6 +22,13 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class BillingCycle extends AuditableEntity {
 
+    public static BillingCycle pendingInput(LocalDate collectionDate) {
+        BillingCycle cycle = new BillingCycle();
+        cycle.setCollectionDate(collectionDate);
+        cycle.setStatus(BillingCycleStatus.PENDING_INPUT);
+        return cycle;
+    }
+
     @Column(name = "collection_date", nullable = false)
     private LocalDate collectionDate;
 

@@ -16,6 +16,7 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -30,6 +31,41 @@ import org.hibernate.type.SqlTypes;
 @Table(name = "invoices")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Invoice extends AuditableEntity {
+
+    public static Invoice regular(
+        Contract contract,
+        BillingCycleItem item,
+        LocalDate billingPeriodEndDate,
+        LocalDate usageFrom,
+        LocalDate usageTo,
+        BigDecimal monthlyRentSnapshot,
+        RentCalculationRule rentCalculationRule,
+        Integer proratedDays,
+        BigDecimal rentAmount,
+        BigDecimal electricityAmount,
+        BigDecimal waterAmount,
+        BigDecimal totalAmount,
+        Instant issuedAt
+    ) {
+        Invoice invoice = new Invoice();
+        invoice.setContract(contract);
+        invoice.setBillingCycleItem(item);
+        invoice.setBillingPeriodEndDate(billingPeriodEndDate);
+        invoice.setInvoiceKind(InvoiceKind.REGULAR);
+        invoice.setUsageFrom(usageFrom);
+        invoice.setUsageTo(usageTo);
+        invoice.setMonthlyRentSnapshot(monthlyRentSnapshot);
+        invoice.setRentCalculationRule(rentCalculationRule);
+        invoice.setProratedDays(proratedDays);
+        invoice.setRentAmount(rentAmount);
+        invoice.setElectricityAmount(electricityAmount);
+        invoice.setWaterAmount(waterAmount);
+        invoice.setTotalAmount(totalAmount);
+        invoice.setStatus(InvoiceStatus.UNPAID);
+        invoice.setIssuedAt(issuedAt);
+        invoice.setDueAt(issuedAt.plus(48, ChronoUnit.HOURS));
+        return invoice;
+    }
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "contract_id", nullable = false)

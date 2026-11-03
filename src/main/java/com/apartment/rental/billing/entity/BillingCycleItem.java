@@ -28,6 +28,21 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class BillingCycleItem extends AuditableEntity {
 
+    public static BillingCycleItem pending(
+        BillingCycle cycle,
+        Contract contract,
+        LocalDate usageFrom,
+        LocalDate usageTo
+    ) {
+        BillingCycleItem item = new BillingCycleItem();
+        item.setBillingCycle(cycle);
+        item.setContract(contract);
+        item.setUsageFrom(usageFrom);
+        item.setUsageTo(usageTo);
+        item.setProcessingResult(BillingCycleItemResult.PENDING);
+        return item;
+    }
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "billing_cycle_id", nullable = false)
     private BillingCycle billingCycle;
