@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
-/** Event payload published after a regular Invoice is committed. */
+
 public record InvoiceIssuedEvent(
     Long invoiceId,
     Long recipientUserId,

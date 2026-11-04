@@ -1,7 +1,7 @@
 package com.apartment.rental.billing.controller;
 
 import com.apartment.rental.billing.dto.BillingCycleItemsForm;
-import com.apartment.rental.billing.dto.BillingCyclePage;
+import com.apartment.rental.billing.dto.BillingCyclePageDto;
 import com.apartment.rental.billing.dto.InvoiceIssuanceResult;
 import com.apartment.rental.billing.service.ManualBillingCycleService;
 import com.apartment.rental.billing.service.RegularInvoiceIssuanceService;
@@ -36,7 +36,7 @@ public class AdminBillingController {
 
     @GetMapping
     public String page(@RequestParam(name = "cycleId", required = false) Long cycleId, Model model) {
-        BillingCyclePage page = billingService.loadPage(cycleId);
+        BillingCyclePageDto page = billingService.loadPage(cycleId);
         model.addAttribute("cycles", page.cycles());
         model.addAttribute("selectedCycle", page.selectedCycle());
         model.addAttribute("billingForm", page.form());

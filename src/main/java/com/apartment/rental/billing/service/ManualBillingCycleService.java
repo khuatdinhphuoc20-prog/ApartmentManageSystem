@@ -9,8 +9,7 @@ import com.apartment.rental.billing.entity.BillingCycleItemResult;
 import com.apartment.rental.billing.entity.BillingCycleStatus;
 import com.apartment.rental.billing.dto.BillingCycleItemForm;
 import com.apartment.rental.billing.dto.BillingCycleItemsForm;
-import com.apartment.rental.billing.dto.BillingCycleOption;
-import com.apartment.rental.billing.dto.BillingCyclePage;
+import com.apartment.rental.billing.dto.BillingCyclePageDto;
 import com.apartment.rental.contract.dto.ContractBillingSnapshotDto;
 import com.apartment.rental.contract.service.ContractBillingQueryService;
 import com.apartment.rental.room.dto.RoomSummaryDto;
@@ -61,20 +60,18 @@ public class ManualBillingCycleService {
     }
 
     @Transactional(readOnly = true)
-    public BillingCyclePage loadPage(Long requestedCycleId) {
-        List<BillingCycleOption> cycles = cycleRepository.findAllByOrderByCollectionDateDesc().stream()
-            .map(this::toOption)
-            .toList();
+    public BillingCyclePageDto loadPage(Long requestedCycleId) {
+        List<BillingCycle> cycles = cycleRepository.findAllByOrderByCollectionDateDesc();
 
-        BillingCycleOption selected = null;
+        BillingCycle selected = null;
         if (requestedCycleId != null) {
             selected = cycles.stream()
-                .filter(cycle -> cycle.id().equals(requestedCycleId))
+                .filter(cycle -> cycle.getId().equals(requestedCycleId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thu đã chọn."));
         } else {
             selected = cycles.stream()
-                .filter(cycle -> cycle.status() == BillingCycleStatus.PENDING_INPUT)
+                .filter(cycle -> cycle.getStatus() == BillingCycleStatus.PENDING_INPUT)
                 .findFirst()
                 .orElse(null);
             if (selected == null && !cycles.isEmpty()) {
@@ -84,12 +81,12 @@ public class ManualBillingCycleService {
 
         BillingCycleItemsForm form = selected == null
             ? new BillingCycleItemsForm()
-            : toForm(selected.id());
+            : toForm(selected.getId());
         boolean canIssue = selected != null
-            && selected.status() == BillingCycleStatus.PENDING_INPUT
+            && selected.getStatus() == BillingCycleStatus.PENDING_INPUT
             && !form.getItems().isEmpty()
             && form.getItems().stream().allMatch(BillingCycleItemForm::isInputComplete);
-        return new BillingCyclePage(cycles, selected, form, canIssue);
+        return new BillingCyclePageDto(cycles, selected, form, canIssue);
     }
 
     @Transactional
@@ -223,10 +220,6 @@ public class ManualBillingCycleService {
         }
         form.setItems(rows);
         return form;
-    }
-
-    private BillingCycleOption toOption(BillingCycle cycle) {
-        return new BillingCycleOption(cycle.getId(), cycle.getCollectionDate(), cycle.getStatus());
     }
 
     private void validateAmount(BigDecimal amount, String label) {

@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
+/** Data shown for one invoice in the customer's invoice page. */
 public record CustomerInvoiceDto(
     Long id,
     Long contractId,
