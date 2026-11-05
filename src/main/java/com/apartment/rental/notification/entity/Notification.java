@@ -35,6 +35,31 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Notification {
 
+    public static Notification manual(User sender, User recipient, String title, String body) {
+        Notification notification = new Notification();
+        notification.senderUser = sender;
+        notification.recipientUser = recipient;
+        notification.title = title;
+        notification.body = body;
+        notification.sourceType = NotificationSourceType.MANUAL;
+        notification.status = NotificationStatus.UNREAD;
+        return notification;
+    }
+
+    public void markRead(Instant readTime) {
+        if (status == NotificationStatus.READ) {
+            return;
+        }
+        if (status != NotificationStatus.UNREAD) {
+            throw new IllegalStateException("Notification status is invalid");
+        }
+        if (readTime == null) {
+            throw new IllegalArgumentException("Read time is required");
+        }
+        status = NotificationStatus.READ;
+        readAt = readTime.truncatedTo(ChronoUnit.MILLIS);
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
