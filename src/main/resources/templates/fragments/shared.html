@@ -37,7 +37,7 @@
 </div>
 
 <div th:fragment="guestAccount" sec:authorize="isAnonymous()" class="d-flex align-items-center gap-2 ms-auto">
-    <span class="small text-secondary" aria-disabled="true">Đăng ký · Chờ tích hợp</span>
+    <a class="btn btn-outline-primary btn-sm" th:href="@{/register}">Đăng ký</a>
     <a class="btn btn-primary btn-sm" th:href="@{/login}">Đăng nhập</a>
 </div>
 </body>
