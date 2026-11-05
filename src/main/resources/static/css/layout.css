@@ -1,0 +1,160 @@
+/* Shared theme. Bootstrap owns the grid, component behaviour and breakpoints. */
+:root {
+    --pine: #1d6050;
+    --deep-pine: #153f37;
+    --mint: #dfede2;
+    --ink: #213932;
+    --line: #dce3dc;
+    --bs-body-font-family: "Segoe UI", system-ui, sans-serif;
+    --bs-body-color: var(--ink);
+    --bs-body-bg: #f7f8f4;
+    --bs-border-color: var(--line);
+    --bs-link-color: var(--pine);
+    --bs-link-hover-color: var(--deep-pine);
+}
+
+h1, h2, h3, .brand, .metric-value {
+    letter-spacing: -.035em;
+}
+
+.brand {
+    font-size: 1.45rem;
+    font-weight: 720;
+    white-space: nowrap;
+}
+
+.app-icon {
+    width: 1.15em;
+    height: 1.15em;
+    flex-shrink: 0;
+    vertical-align: -.16em;
+}
+
+.btn-primary {
+    --bs-btn-bg: var(--pine);
+    --bs-btn-border-color: var(--pine);
+    --bs-btn-hover-bg: var(--deep-pine);
+    --bs-btn-hover-border-color: var(--deep-pine);
+    --bs-btn-active-bg: #10382e;
+    --bs-btn-active-border-color: #10382e;
+    --bs-btn-focus-shadow-rgb: 44, 125, 95;
+}
+
+.form-control:focus {
+    border-color: var(--pine);
+    box-shadow: 0 0 0 .2rem rgb(29 96 80 / 18%);
+}
+
+.card {
+    --bs-card-bg: #fff;
+    --bs-card-border-color: var(--line);
+    --bs-card-border-radius: 1rem;
+}
+
+.skip-link:focus {
+    position: fixed;
+    z-index: 1100;
+    top: .5rem;
+    left: .5rem;
+    padding: .6rem 1rem;
+    background: white;
+}
+
+/* Admin shell */
+.admin-sidebar {
+    --bs-offcanvas-width: 16.25rem;
+    width: var(--bs-offcanvas-width);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    color: #f1f6f0;
+    background: var(--deep-pine);
+}
+
+@media (min-width: 992px) {
+    aside.admin-sidebar {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+    }
+}
+
+.sidebar-panel { background: var(--deep-pine); }
+
+.nav-section {
+    margin: .5rem .75rem;
+    color: #b7cec2;
+    font-size: .72rem;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.admin-sidebar .nav-link {
+    padding: .6rem .75rem;
+    border-radius: .5rem;
+    color: #d7e4dc;
+    font-size: .92rem;
+}
+
+.admin-sidebar a.nav-link:hover, .admin-sidebar .nav-link.active {
+    background: #2b594e;
+    color: white;
+}
+
+.pending small {
+    color: #bed1c6;
+    font-size: .72rem;
+}
+
+.admin-workspace { min-width: 0; }
+.admin-main { max-width: 100rem; }
+.admin-topbar { min-height: 4.25rem; }
+
+.avatar, .icon-tile {
+    display: inline-grid;
+    place-items: center;
+    background: var(--mint);
+    color: var(--pine);
+}
+
+.avatar { border-radius: 50%; width: 2.1rem; height: 2.1rem; font-size: .75rem; }
+.icon-tile { border-radius: .75rem; width: 2.6rem; height: 2.6rem; font-size: 1.25rem; }
+.icon-tile.amber { background: #fcf0d7; color: #846019; }
+.icon-tile.terracotta { background: #f8e4db; color: #92492c; }
+
+.dashboard-banner {
+    background: #e4ecdf;
+    color: var(--deep-pine);
+}
+
+@media (min-width: 1200px) {
+    .dashboard-banner {
+        background: #e4ecdf url("../images/building.svg") no-repeat right 3% bottom / auto 100%;
+    }
+}
+
+.sample-label { background: #f5e8d3; color: #775020; }
+.metric-label { margin: 1rem 0 .45rem; font-size: .92rem; font-weight: 550; letter-spacing: 0; }
+.metric-value { font-size: clamp(1.35rem, 1.9vw, 2rem); font-weight: 680; line-height: 1.15; }
+.metric-value small { font-size: .8rem; font-weight: 500; letter-spacing: 0; }
+.legend-dot { width: .65rem; height: .65rem; border-radius: 50%; }
+.available { background: #9bbf99; }
+.rented { background: #346d58; }
+.inactive { background: #d6c7a7; }
+.list-group, .table { --bs-list-group-bg: white; --bs-table-bg: white; }
+
+/* Customer home */
+.customer-sidebar { --bs-offcanvas-width: 17.5rem; }
+.customer-workspace { min-width: 0; }
+.customer-hero { background: #e9edde; color: var(--deep-pine); }
+.customer-hero p { max-width: 29rem; }
+.hero-art { height: auto; max-height: 23rem; }
+.room-card { overflow: hidden; }
+.room-cover { background: #e6eddf; }
+#room-list > :nth-child(3n + 2) .room-cover { background: #efe5d7; }
+#room-list > :nth-child(3n) .room-cover { background: #dfe9e9; }
+.room-cover img { object-fit: contain; }
+.room-status { position: absolute; top: .7rem; left: .7rem; background: white; color: var(--pine); }
+.price { color: var(--pine); font-size: 1.1rem; }

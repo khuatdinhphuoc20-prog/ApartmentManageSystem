@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<body>
+<aside th:fragment="sidebar(active)" id="adminNav" class="admin-sidebar offcanvas-lg offcanvas-start"
+       tabindex="-1" aria-labelledby="adminBrand">
+    <div class="sidebar-panel d-flex flex-column flex-grow-1">
+        <div class="d-flex align-items-center justify-content-between p-4">
+            <a id="adminBrand" class="text-reset text-decoration-none" th:href="@{/admin/dashboard}">
+                <span th:replace="~{fragments/shared :: brand}"></span>
+            </a>
+            <button class="btn-close btn-close-white d-lg-none" type="button" data-bs-dismiss="offcanvas"
+                    data-bs-target="#adminNav" aria-label="Đóng điều hướng"></button>
+        </div>
+        <nav class="nav flex-column gap-1 px-3 pb-4" aria-label="Điều hướng quản trị">
+            <div class="nav-section">Không gian quản trị</div>
+            <th:block th:replace="~{fragments/admin-sidebar :: item('dashboard', 'Tổng quan', 'grid', @{/admin/dashboard})}"></th:block>
+            <div class="nav-section mt-3">Quản lý cho thuê</div>
+            <th:block th:replace="~{fragments/admin-sidebar :: item('rooms', 'Phòng trọ', 'building', ${null})}"></th:block>
+            <th:block th:replace="~{fragments/admin-sidebar :: item('applications', 'Đơn thuê', 'clipboard', ${null})}"></th:block>
+            <th:block th:replace="~{fragments/admin-sidebar :: item('contracts', 'Hợp đồng', 'file', ${null})}"></th:block>
+            <div class="nav-section mt-3">Vận hành</div>
+            <th:block th:replace="~{fragments/admin-sidebar :: item('billing', 'Kỳ thu & hóa đơn', 'receipt', ${null})}"></th:block>
+            <th:block th:replace="~{fragments/admin-sidebar :: item('collections', 'Thu tiền & công nợ', 'wallet', ${null})}"></th:block>
+            <th:block th:replace="~{fragments/admin-sidebar :: item('issues', 'Phản ánh', 'message', ${null})}"></th:block>
+            <th:block th:replace="~{fragments/admin-sidebar :: item('notifications', 'Thông báo', 'bell', ${null})}"></th:block>
+        </nav>
+    </div>
+</aside>
+
+<th:block th:fragment="item(key, label, icon, url)">
+    <a th:if="${url != null}" th:href="${url}" class="nav-link d-flex align-items-center gap-3"
+       th:classappend="${key == active ? 'active' : ''}" th:attr="aria-current=${key == active ? 'page' : null}">
+        <svg th:replace="~{fragments/shared :: icon(${icon})}"></svg><span th:text="${label}"></span>
+    </a>
+    <span th:if="${url == null}" class="nav-link pending d-flex align-items-center gap-3" aria-disabled="true">
+        <svg th:replace="~{fragments/shared :: icon(${icon})}"></svg><span th:text="${label}"></span>
+        <small class="ms-auto">Chờ</small>
+    </span>
+</th:block>
+</body>
+</html>

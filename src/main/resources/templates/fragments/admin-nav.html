@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<body>
+<header th:fragment="header(title)" class="admin-topbar d-flex align-items-center gap-3 border-bottom bg-white px-3 px-sm-4 px-xl-5">
+    <button class="btn btn-outline-secondary btn-sm d-lg-none" type="button" data-bs-toggle="offcanvas"
+            data-bs-target="#adminNav" aria-controls="adminNav" aria-label="Mở điều hướng">
+        <svg th:replace="~{fragments/shared :: icon('menu')}"></svg>
+    </button>
+    <nav aria-label="Đường dẫn">
+        <ol class="breadcrumb mb-0 small">
+            <li class="breadcrumb-item">Quản trị</li>
+            <li class="breadcrumb-item active" aria-current="page" th:text="${title}"></li>
+        </ol>
+    </nav>
+    <div th:replace="~{fragments/shared :: account}"></div>
+</header>
+</body>
+</html>
