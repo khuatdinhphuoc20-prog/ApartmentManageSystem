@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<header th:fragment="navbar(title)" class="bg-white border-bottom">
+    <div class="container d-flex align-items-center gap-3 py-3 px-3 px-sm-4">
+        <button sec:authorize="hasRole('USER')" type="button" class="btn btn-outline-secondary btn-sm d-lg-none"
+                data-bs-toggle="offcanvas" data-bs-target="#tenantNav" aria-controls="tenantNav"
+                aria-label="Mở điều hướng người thuê">
+            <svg th:replace="~{fragments/shared :: icon('menu')}"></svg>
+        </button>
+        <span class="fw-semibold" th:text="${title}"></span>
+        <div th:replace="~{fragments/shared :: guestAccount}"></div>
+        <div th:replace="~{fragments/shared :: account}"></div>
+    </div>
+</header>
+</body>
+</html>

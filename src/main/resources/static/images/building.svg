@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 290" fill="none">
+  <defs>
+    <pattern id="slats" patternUnits="userSpaceOnUse" width="7" height="7"><path d="M0 0v7" stroke="#a3b7a1" stroke-width="2"/></pattern>
+    <pattern id="bricks" patternUnits="userSpaceOnUse" width="15" height="8"><path d="M0 8h15M6 0v8" stroke="#cba185" stroke-width=".7"/></pattern>
+    <g id="window"><rect width="64" height="32" fill="#425d55"/><path d="M2 2h29v28H2zM34 2h28v28H34z" fill="#aac4b5"/><path d="m7 26 18-21m13 20L54 5" stroke="#d6e1ce" stroke-width="2"/></g>
+    <g id="balcony"><use href="#window"/><path d="M-8 35v-12h81v12m-75-11v11m9-11v11m9-11v11m9-11v11m9-11v11m9-11v11m9-11v11m9-11v11" stroke="#3c574d" stroke-width="2"/><path d="M-12 35h88v6h-88z" fill="#e9d8b8" stroke="#657866"/></g>
+    <g id="tree"><path d="M0 0c-20 5-24-14-17-23-9-7-2-25 8-28-3-14 15-31 24-16 10 7 7 18 8 21 19 12 9 29 8 31C35-2 17 4 0 0Z" fill="#799b7c"/><path d="M8 22v-63m0 29 12-14m-12 4-11-12" stroke="#466351" stroke-width="2"/></g>
+  </defs>
+  <circle cx="400" cy="75" r="43" fill="#e5b779"/>
+  <path d="M10 250c40-38 82-43 140-34 60 8 119 1 169-15 78-25 140-20 211 40v22H10z" fill="#bdcbb4"/>
+  <path d="M89 248V126h67V97h38v151" fill="#c1cdba"/><path d="M412 247V143h31v-29h30v133" fill="#bfcebc"/>
+  <g stroke="#546e5b" stroke-linejoin="round">
+    <path d="M155 257V70l58-24v211z" fill="#bd9277"/><path d="M155 257V70l58-24v211z" fill="url(#bricks)"/>
+    <path d="M213 46h162v211H213z" fill="#ebdfc6"/>
+    <path d="M203 47v-9l65-18h112v28z" fill="#d8c4a1"/><path d="M150 69l53-31v9l-53 31z" fill="#a68368"/>
+    <path d="M304 56h65v144h-65z" fill="url(#slats)"/>
+    <path d="M311 257V96q24-36 49 0v161" fill="#c58d68"/>
+    <path d="M320 257V103q15-28 30 0v154" fill="#607867"/>
+  </g>
+  <use href="#balcony" x="230" y="62"/><use href="#balcony" x="230" y="112"/><use href="#balcony" x="230" y="162"/>
+  <path d="M230 256v-38h36v38m6 0v-38h19v38" fill="#678477" stroke="#415e50" stroke-width="2"/>
+  <path d="M166 93l21-9v24l-21 8zm0 45 21-8v25l-21 7zm0 46 21-7v24l-21 6z" fill="#667d6a"/>
+  <use href="#tree" transform="translate(127 235) scale(.96)"/><use href="#tree" transform="translate(398 237) scale(1.16)"/>
+  <path d="M60 258h412m-338 7h238m-221 5h54" stroke="#839b80" stroke-width="2" stroke-linecap="round"/>
+</svg>
