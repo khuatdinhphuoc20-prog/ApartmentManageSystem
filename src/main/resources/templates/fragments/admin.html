@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, active, content)">
+<head th:replace="~{fragments/shared :: head(${title})}"></head>
+<body>
+<a th:replace="~{fragments/shared :: skip}"></a>
+<div class="d-lg-flex min-vh-100">
+    <aside th:replace="~{fragments/admin-sidebar :: sidebar(${active})}"></aside>
+    <div class="admin-workspace flex-grow-1">
+        <header th:replace="~{fragments/admin-nav :: header(${title})}"></header>
+        <main id="main" tabindex="-1" class="admin-main container-fluid p-3 p-sm-4 p-xl-5">
+            <th:block th:replace="${content}"></th:block>
+        </main>
+    </div>
+</div>
+<th:block th:replace="~{fragments/shared :: scripts}"></th:block>
+</body>
+</html>

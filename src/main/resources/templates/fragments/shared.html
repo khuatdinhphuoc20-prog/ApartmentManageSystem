@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="head(title)">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="|${title} · Hiên Nhà|">Hiên Nhà</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/images/brand.svg}">
+    <link rel="stylesheet" th:href="@{/vendor/bootstrap-5.3.8/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/css/layout.css}">
+</head>
+<body>
+<th:block th:fragment="scripts">
+    <script defer th:src="@{/vendor/bootstrap-5.3.8/bootstrap.bundle.min.js}"></script>
+    <script defer th:src="@{/js/logout.js}"></script>
+</th:block>
+
+<span th:fragment="brand" class="brand d-inline-flex align-items-center gap-2">
+    <img th:src="@{/images/brand.svg}" width="36" height="36" alt=""> Hiên Nhà
+</span>
+
+<svg th:fragment="icon(name)" class="app-icon" aria-hidden="true" focusable="false">
+    <use th:href="@{|/images/icons.svg#${name}|}"></use>
+</svg>
+
+<a th:fragment="skip" href="#main" class="visually-hidden-focusable skip-link">Đến nội dung chính</a>
+
+<div th:fragment="account" sec:authorize="isAuthenticated()"
+     class="d-flex align-items-center gap-2 gap-sm-3 ms-auto">
+    <span class="d-inline-flex align-items-center gap-2 small fw-semibold">
+        <span class="avatar" aria-hidden="true">TK</span>
+        <span class="d-none d-sm-inline" sec:authentication="name"></span>
+    </span>
+    <form th:action="@{/logout}" th:attr="data-login-url=@{/login}" method="post"
+          data-logout-form class="mb-0">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Đăng xuất</button>
+    </form>
+</div>
+
+<div th:fragment="guestAccount" sec:authorize="isAnonymous()" class="d-flex align-items-center gap-2 ms-auto">
+    <span class="small text-secondary" aria-disabled="true">Đăng ký · Chờ tích hợp</span>
+    <a class="btn btn-primary btn-sm" th:href="@{/login}">Đăng nhập</a>
+</div>
+</body>
+</html>
