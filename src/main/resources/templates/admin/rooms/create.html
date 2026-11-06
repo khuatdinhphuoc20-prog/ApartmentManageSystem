@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/admin :: layout('Thêm phòng mới', 'rooms', ~{::section})}">
+<body>
+<section>
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-1">Thêm phòng mới</h1>
+            <p class="text-secondary mb-0">Tạo mới căn phòng vào danh mục cho thuê của tòa nhà.</p>
+        </div>
+        <a th:href="@{/admin/rooms}" class="btn btn-outline-secondary">Quay lại danh sách</a>
+    </div>
+
+    <!-- Thông báo lỗi nếu có -->
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <form th:action="@{/admin/rooms/create}" th:object="${roomRequest}" method="post">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="roomCode" class="form-label fw-semibold">Mã phòng <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="roomCode" th:field="*{roomCode}" placeholder="Ví dụ: P101, P202" required>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label for="floorNumber" class="form-label fw-semibold">Tầng <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="floorNumber" th:field="*{floorNumber}" min="1" placeholder="Ví dụ: 1" required>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label for="capacity" class="form-label fw-semibold">Sức chứa (người) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="capacity" th:field="*{capacity}" min="1" placeholder="Ví dụ: 2" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="listedMonthlyRent" class="form-label fw-semibold">Giá thuê niêm yết (VNĐ/tháng) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="listedMonthlyRent" th:field="*{listedMonthlyRent}" min="1" step="any" placeholder="Ví dụ: 3500000" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="areaM2" class="form-label fw-semibold">Diện tích (m²)</label>
+                        <input type="number" class="form-control" id="areaM2" th:field="*{areaM2}" step="any" min="1" placeholder="Ví dụ: 25.5 (để trống nếu chưa đo)">
+                    </div>
+
+                    <div class="col-12">
+                        <label for="coverImagePath" class="form-label fw-semibold">Đường dẫn ảnh đại diện <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="coverImagePath" th:field="*{coverImagePath}" placeholder="/images/rooms/p101.jpg" required>
+                    </div>
+
+                    <div class="col-12">
+                        <label for="description" class="form-label fw-semibold">Mô tả tiện ích phòng</label>
+                        <textarea class="form-control" id="description" th:field="*{description}" rows="4" placeholder="Mô tả máy lạnh, gác lửng, ban công, cửa sổ..."></textarea>
+                    </div>
+
+                    <div class="col-12 text-end mt-4">
+                        <a th:href="@{/admin/rooms}" class="btn btn-secondary me-2">Hủy</a>
+                        <button type="submit" class="btn btn-primary">Lưu phòng mới</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+</body>
+</html>

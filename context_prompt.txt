@@ -1,0 +1,213 @@
+Bạn là Senior Business Analyst và Senior Spring Boot Developer.
+
+Tôi đang tham gia phát triển dự án quản lý phòng trọ bằng:
+- Spring Boot MVC
+- Thymeleaf
+- SQL Server
+- Thanh toán Sandbox
+
+Dự án có 6 thành viên, được phân chia thành 6 module.
+
+Tôi được giao phụ trách MODULE: M03.
+
+Tôi đã cung cấp 3 tài liệu:
+
+1. BUSINESS_SPECIFICATION.md
+2. MODULE_HANDOFF_AND_IMPLEMENTATION_V2.md
+3. database_design.md
+
+NHIỆM VỤ CỦA BẠN:
+
+Hãy đọc kỹ toàn bộ 3 tài liệu trước khi phân tích.
+
+Không được tự suy diễn, thay đổi hoặc bổ sung Business Rules
+chưa được xác nhận.
+
+Chỉ tập trung phân tích và lập kế hoạch triển khai module
+mà tôi được giao.
+
+==================================================
+PHẦN 1. HIỂU BUSINESS CONTEXT CỦA MODULE
+==================================================
+
+Hãy xác định:
+
+1. Module này giải quyết vấn đề nghiệp vụ gì?
+2. Vai trò của module trong toàn bộ hệ thống.
+3. Những Actor nào tương tác với module?
+4. Những Business Objects nào liên quan?
+5. Module sở hữu Entity và Repository nào?
+6. Những trạng thái và quy tắc chuyển trạng thái nào
+   cần được quản lý?
+
+Giải thích bằng ngôn ngữ dễ hiểu và ví dụ thực tế.
+
+==================================================
+PHẦN 2. ĐẶC TẢ CHI TIẾT TỪNG USE CASE
+==================================================
+
+Liệt kê đầy đủ tất cả Use Case được giao cho module.
+
+Với MỖI Use Case, hãy trình bày:
+
+1. UC ID và tên chức năng.
+2. Actor.
+3. Business Objective.
+4. Trigger.
+5. Preconditions.
+6. Main Business Workflow.
+7. Alternative Flows.
+8. Exception Flows.
+9. Postconditions.
+10. Business Rules liên quan.
+11. Entity và dữ liệu được sử dụng.
+12. Trạng thái dữ liệu trước và sau khi thực hiện.
+13. Module Dependencies.
+14. Acceptance Criteria.
+
+Đối với Business Rules:
+
+- Phải trích dẫn chính xác BR ID từ tài liệu gốc.
+- Giải thích cách áp dụng BR vào Use Case.
+- Tìm cả những quy tắc liên quan gián tiếp
+  từ các workflow hoặc module khác.
+- Không chỉ liệt kê mã BR.
+
+Với các nghiệp vụ phức tạp, hãy đưa ra ví dụ thực tế.
+
+==================================================
+PHẦN 3. PHÂN TÍCH PHỤ THUỘC GIỮA CÁC MODULE
+==================================================
+
+Xác định:
+
+A. Module của tôi cần chức năng nào từ module khác?
+
+Với mỗi dependency:
+- Module cung cấp là ai?
+- UC nào của tôi phụ thuộc?
+- Cần dữ liệu hoặc service gì?
+- Input và Output cần thiết?
+- Phụ thuộc thuộc loại CỨNG, ĐỌC hay MỀM?
+- Điều gì xảy ra nếu service chưa hoàn thành?
+
+B. Module nào đang phụ thuộc vào module của tôi?
+
+- Họ cần chức năng gì?
+- Tôi phải cung cấp DTO/Interface/Service nào?
+- Tôi cần bàn giao trước những gì?
+
+==================================================
+PHẦN 4. MODULE OWNER VÀ WORKFLOW OWNER
+==================================================
+
+Hãy phân biệt:
+
+1. Những chức năng tôi chịu trách nhiệm với vai trò
+   Module Owner.
+
+2. Những workflow tôi phải chịu trách nhiệm hoàn thành
+   với vai trò Workflow Owner.
+
+Với mỗi workflow tôi sở hữu:
+
+- Các UC liên quan.
+- Các module tham gia.
+- Thứ tự nghiệp vụ bắt buộc.
+- Service/Port cần gọi.
+- Transaction boundary.
+- Các trường hợp lỗi và rollback.
+- Điều kiện để workflow được coi là hoàn thành.
+
+Không cho phép module của tôi trực tiếp cập nhật Repository
+thuộc quyền sở hữu module khác.
+
+==================================================
+PHẦN 5. KẾ HOẠCH TRIỂN KHAI
+==================================================
+
+Hãy phân loại công việc thành:
+
+A. Công việc độc lập:
+- Có thể bắt đầu ngay.
+- Không cần chờ module khác.
+- Đề xuất các class, service, controller cần xây dựng.
+
+B. Công việc phụ thuộc:
+- Cần phối hợp với module khác.
+- Cần những interface hoặc DTO nào.
+
+Với từng dependency, đề xuất:
+
+PHƯƠNG ÁN 1: Phát triển tuần tự.
+- Ai làm trước?
+- Ai làm sau?
+- Ưu điểm, nhược điểm.
+
+PHƯƠNG ÁN 2: Phát triển song song.
+- Những gì có thể mock?
+- Cần thống nhất interface nào?
+- Khi nào thay mock bằng service thật?
+- Cần kiểm thử tích hợp ra sao?
+
+Không mặc định phát triển song song luôn tốt hơn.
+
+==================================================
+PHẦN 6. THỨ TỰ THỰC HIỆN VÀ TICKET
+==================================================
+
+Đề xuất danh sách ticket triển khai module.
+
+Với mỗi ticket:
+
+- Ticket ID.
+- Use Case liên quan.
+- Business Rules liên quan.
+- Công việc cụ thể.
+- Dependencies.
+- Điều kiện bắt đầu.
+- Kết quả bàn giao.
+- Acceptance Criteria.
+
+Sắp xếp ticket theo thứ tự hợp lý.
+
+Ưu tiên những chức năng có thể thực hiện độc lập,
+đồng thời cung cấp sớm service mà module khác cần.
+
+==================================================
+QUY TẮC BẮT BUỘC
+==================================================
+
+1. BUSINESS_SPECIFICATION.md là nguồn chuẩn về nghiệp vụ.
+
+2. MODULE_HANDOFF_AND_IMPLEMENTATION_V2.md
+   là nguồn chuẩn về phân công Module/Workflow Owner.
+
+3. database_design.md là nguồn chuẩn về cấu trúc dữ liệu.
+
+4. Không tự ý thay đổi phân công Use Case.
+
+5. Không tự tạo Business Rules mới.
+
+6. Không tự thêm Entity ngoài thiết kế database.
+
+7. Không tạo chức năng trùng với Module Owner khác.
+
+8. Nếu phát hiện thông tin mâu thuẫn hoặc chưa đủ,
+   hãy liệt kê vào mục OPEN QUESTIONS.
+
+9. Không tự lựa chọn một phương án nghiệp vụ
+   khi tài liệu chưa có quyết định.
+
+10. Trong mỗi phần phân tích, hãy chỉ rõ
+    thông tin được lấy từ tài liệu nào.
+
+11. Phân biệt rõ:
+    - Việc có thể code ngay.
+    - Việc có thể code với mock.
+    - Việc phải chờ tích hợp service thật.
+
+12. Chưa tiến hành viết code.
+
+Trước tiên, hãy tạo bản đặc tả và kế hoạch triển khai
+đầy đủ cho module của tôi để tôi xem xét.
