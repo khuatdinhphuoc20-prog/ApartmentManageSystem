@@ -16,7 +16,7 @@ SET XACT_ABORT ON;
 BEGIN TRANSACTION;
 
 DECLARE @admin_email NVARCHAR(254) = N'admin@rental.local';
-DECLARE @admin_password_hash VARCHAR(255) = '$2a$10$SvFpnMzQIudAC4AnYKjchuxkjZK497w55okzg00zZ6qDv7rEWnGN2';
+DECLARE @admin_password_hash VARCHAR(255) = '$2a$12$IOjc6CFP90FT0AhEdoZFv.cGLtvy110vJW5TAhRMQnA2y0UlejXua';
 DECLARE @admin_full_name NVARCHAR(150) = N'Admin';
 DECLARE @admin_phone VARCHAR(20) = '0900000000';
 DECLARE @admin_identity_document_no NVARCHAR(30) = N'000000000000';

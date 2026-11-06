@@ -2,7 +2,7 @@
 
 The shared local development database name is `RentalApartmentDev`. On each
 developer's SQL Server instance, run `schema.sql` once using SSMS or `sqlcmd`.
-The script creates this database if it does not exist and then creates the ten
+The script creates this database if it does not exist and then creates the nine
 tables and their constraints/indexes. Select the server explicitly:
 
 ```powershell
@@ -21,6 +21,12 @@ Invoice rows. Historical `SANDBOX` values remain readable, while the database
 blocks new SANDBOX values and the application writes only `CASH` and
 `BANK_TRANSFER` for new payments.
 
+Existing databases created with building-wide day-10 billing must run
+`migration_per_contract_billing.sql` once before starting the updated app. It
+converts the old cycle items into contract billing periods, preserves Invoice
+history and pending utility inputs, and removes the global BillingCycle table.
+Do not run it on a database created from the updated `schema.sql`.
+
 Run `seed_admin.sql` once after `schema.sql`. It creates the shared development
 Admin sample (`admin@rental.local`) with non-real phone/identity data and a
 Spring Security BCrypt password hash. It does not contain the plaintext Admin
@@ -35,13 +41,20 @@ sqlcmd -S .\YOUR_INSTANCE -E -d master -b -i database/seed_admin.sql
 The Admin password is shared separately from this repository. It is unrelated
 to `DB_PASSWORD`, which authenticates the application's SQL Server login.
 
+To reset the existing development Admin password, run
+`reset_admin_password.sql` once against `RentalApartmentDev` in SSMS or with
+`sqlcmd`. The script updates only `admin@rental.local` with role `ADMIN` and
+stores only a BCrypt hash. The `seed_admin.sql` hash matches this reset for a
+fresh development database; rerunning the seed script does not reset an
+existing account.
+
 For a complete local dataset, run `seed_demo_data.sql` once after both
 `schema.sql` and `seed_admin.sql`. It requires a fresh `RentalApartmentDev`
 database containing only the seeded Admin and refuses to run if business data
-already exists. It adds nine USER accounts and ten rows to each of the other
-nine tables; it never deletes or truncates data. This dataset exercises
-application/contract statuses, all room states, completed and pending billing
-cycles, `NULL` versus zero utility input, `NO_CHARGE`, unpaid/overdue/paid
+already exists. It adds nine USER accounts and ten rows to each of the eight
+business tables; it never deletes or truncates data. This dataset exercises
+application/contract statuses, all room states, processed and pending contract
+billing periods, `NULL` versus zero utility input, `NO_CHARGE`, unpaid/overdue/paid
 Invoices, payment methods, issues, and notifications.
 
 The sample USER accounts are `tenant01@rental.local` through

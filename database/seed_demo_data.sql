@@ -22,8 +22,7 @@ IF EXISTS (SELECT 1 FROM dbo.rooms)
    OR EXISTS (SELECT 1 FROM dbo.rental_applications)
    OR EXISTS (SELECT 1 FROM dbo.contracts)
    OR EXISTS (SELECT 1 FROM dbo.contract_co_occupants)
-   OR EXISTS (SELECT 1 FROM dbo.billing_cycles)
-   OR EXISTS (SELECT 1 FROM dbo.billing_cycle_items)
+   OR EXISTS (SELECT 1 FROM dbo.billing_periods)
    OR EXISTS (SELECT 1 FROM dbo.invoices)
    OR EXISTS (SELECT 1 FROM dbo.issues)
    OR EXISTS (SELECT 1 FROM dbo.notifications)
@@ -123,41 +122,27 @@ BEGIN TRY
         (10, 10, N'Nguyễn Người Ở Cùng 10', N'CO0000000010', NULL, @now, @now);
     SET IDENTITY_INSERT dbo.contract_co_occupants OFF;
 
-    SET IDENTITY_INSERT dbo.billing_cycles ON;
-    INSERT INTO dbo.billing_cycles (id, collection_date, status, completed_at, created_at, updated_at) VALUES
-        (1, '2026-01-10', 'COMPLETED', '2026-01-10T15:00:00', @now, @now),
-        (2, '2026-02-10', 'COMPLETED', '2026-02-10T15:00:00', @now, @now),
-        (3, '2026-03-10', 'COMPLETED', '2026-03-10T15:00:00', @now, @now),
-        (4, '2026-04-10', 'COMPLETED', '2026-04-10T15:00:00', @now, @now),
-        (5, '2026-05-10', 'COMPLETED', '2026-05-10T15:00:00', @now, @now),
-        (6, '2026-06-10', 'COMPLETED', '2026-06-10T15:00:00', @now, @now),
-        (7, '2026-07-10', 'COMPLETED', '2026-07-10T15:00:00', @now, @now),
-        (8, '2026-08-10', 'COMPLETED', '2026-08-10T15:00:00', @now, @now),
-        (9, '2026-09-10', 'COMPLETED', '2026-09-10T15:00:00', @now, @now),
-        (10, '2026-10-10', 'PENDING_INPUT', NULL, @now, @now);
-    SET IDENTITY_INSERT dbo.billing_cycles OFF;
-
-    SET IDENTITY_INSERT dbo.billing_cycle_items ON;
-    INSERT INTO dbo.billing_cycle_items (
-        id, billing_cycle_id, contract_id, usage_from, usage_to, electricity_amount, water_amount,
+    SET IDENTITY_INSERT dbo.billing_periods ON;
+    INSERT INTO dbo.billing_periods (
+        id, contract_id, usage_from, usage_to, billing_period_end_date, electricity_amount, water_amount,
         input_completed_at, entered_by_user_id, rent_amount, processing_result, processed_at,
         created_at, updated_at
     ) VALUES
-        (1, 1, 3, '2025-12-10', '2026-01-10', 100000, 50000, '2026-01-10T09:00:00', 1, 3200000, 'INVOICED', '2026-01-10T10:00:00', @now, @now),
-        (2, 2, 3, '2026-01-10', '2026-02-10', 110000, 55000, '2026-02-10T09:00:00', 1, 3200000, 'INVOICED', '2026-02-10T10:00:00', @now, @now),
-        (3, 3, 9, '2026-03-09', '2026-03-10', 0, 0, '2026-03-10T09:00:00', 1, 0, 'NO_CHARGE', '2026-03-10T10:00:00', @now, @now),
-        (4, 4, 3, '2026-03-10', '2026-04-10', 120000, 60000, '2026-04-10T09:00:00', 1, 3200000, 'INVOICED', '2026-04-10T10:00:00', @now, @now),
-        (5, 5, 3, '2026-04-10', '2026-05-10', 130000, 65000, '2026-05-10T09:00:00', 1, 3200000, 'INVOICED', '2026-05-10T10:00:00', @now, @now),
-        (6, 6, 3, '2026-05-10', '2026-06-10', 140000, 70000, '2026-06-10T09:00:00', 1, 3200000, 'INVOICED', '2026-06-10T10:00:00', @now, @now),
-        (7, 7, 3, '2026-06-10', '2026-07-10', 150000, 75000, '2026-07-10T09:00:00', 1, 3200000, 'INVOICED', '2026-07-10T10:00:00', @now, @now),
-        (8, 8, 3, '2026-07-10', '2026-08-10', 160000, 80000, '2026-08-10T09:00:00', 1, 3200000, 'INVOICED', '2026-08-10T10:00:00', @now, @now),
-        (9, 9, 3, '2026-08-10', '2026-09-10', 170000, 85000, '2026-09-10T09:00:00', 1, 3200000, 'INVOICED', '2026-09-10T10:00:00', @now, @now),
-        (10, 10, 3, '2026-09-10', '2026-10-10', NULL, NULL, NULL, NULL, NULL, 'PENDING', NULL, @now, @now);
-    SET IDENTITY_INSERT dbo.billing_cycle_items OFF;
+        (1, 3, '2025-12-10', '2026-01-10', '2026-01-10', 100000, 50000, '2026-01-10T09:00:00', 1, 3200000, 'INVOICED', '2026-01-10T10:00:00', @now, @now),
+        (2, 3, '2026-01-10', '2026-02-10', '2026-02-10', 110000, 55000, '2026-02-10T09:00:00', 1, 3200000, 'INVOICED', '2026-02-10T10:00:00', @now, @now),
+        (3, 9, '2026-03-09', '2026-03-10', '2026-03-10', 0, 0, '2026-03-10T09:00:00', 1, 0, 'NO_CHARGE', '2026-03-10T10:00:00', @now, @now),
+        (4, 3, '2026-03-10', '2026-04-10', '2026-04-10', 120000, 60000, '2026-04-10T09:00:00', 1, 3200000, 'INVOICED', '2026-04-10T10:00:00', @now, @now),
+        (5, 3, '2026-04-10', '2026-05-10', '2026-05-10', 130000, 65000, '2026-05-10T09:00:00', 1, 3200000, 'INVOICED', '2026-05-10T10:00:00', @now, @now),
+        (6, 3, '2026-05-10', '2026-06-10', '2026-06-10', 140000, 70000, '2026-06-10T09:00:00', 1, 3200000, 'INVOICED', '2026-06-10T10:00:00', @now, @now),
+        (7, 3, '2026-06-10', '2026-07-10', '2026-07-10', 150000, 75000, '2026-07-10T09:00:00', 1, 3200000, 'INVOICED', '2026-07-10T10:00:00', @now, @now),
+        (8, 3, '2026-07-10', '2026-08-10', '2026-08-10', 160000, 80000, '2026-08-10T09:00:00', 1, 3200000, 'INVOICED', '2026-08-10T10:00:00', @now, @now),
+        (9, 3, '2026-08-10', '2026-09-10', '2026-09-10', 170000, 85000, '2026-09-10T09:00:00', 1, 3200000, 'INVOICED', '2026-09-10T10:00:00', @now, @now),
+        (10, 3, '2026-09-10', '2026-10-10', '2026-10-10', NULL, NULL, NULL, NULL, NULL, 'PENDING', NULL, @now, @now);
+    SET IDENTITY_INSERT dbo.billing_periods OFF;
 
     SET IDENTITY_INSERT dbo.invoices ON;
     INSERT INTO dbo.invoices (
-        id, contract_id, billing_cycle_item_id, billing_period_end_date, invoice_kind, usage_from, usage_to,
+        id, contract_id, billing_period_id, billing_period_end_date, invoice_kind, usage_from, usage_to,
         monthly_rent_snapshot, rent_calculation_rule, prorated_days, rent_amount, electricity_amount,
         water_amount, total_amount, status, issued_at, due_at, paid_at, payment_method,
         payment_reference, confirmed_by_user_id, created_at, updated_at
