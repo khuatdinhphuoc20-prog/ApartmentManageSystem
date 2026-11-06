@@ -1,7 +1,7 @@
 package com.apartment.rental.invoice.entity;
 
 import com.apartment.rental.account.entity.User;
-import com.apartment.rental.billing.entity.BillingCycleItem;
+import com.apartment.rental.billing.entity.BillingPeriod;
 import com.apartment.rental.contract.entity.Contract;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -61,13 +61,48 @@ public class Invoice {
         updatedAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     }
 
+    public static Invoice regular(
+        Contract contract,
+        BillingPeriod billingPeriod,
+        LocalDate billingPeriodEndDate,
+        LocalDate usageFrom,
+        LocalDate usageTo,
+        BigDecimal monthlyRentSnapshot,
+        RentCalculationRule rentCalculationRule,
+        Integer proratedDays,
+        BigDecimal rentAmount,
+        BigDecimal electricityAmount,
+        BigDecimal waterAmount,
+        BigDecimal totalAmount,
+        Instant issuedAt
+    ) {
+        Invoice invoice = new Invoice();
+        invoice.setContract(contract);
+        invoice.setBillingPeriod(billingPeriod);
+        invoice.setBillingPeriodEndDate(billingPeriodEndDate);
+        invoice.setInvoiceKind(InvoiceKind.REGULAR);
+        invoice.setUsageFrom(usageFrom);
+        invoice.setUsageTo(usageTo);
+        invoice.setMonthlyRentSnapshot(monthlyRentSnapshot);
+        invoice.setRentCalculationRule(rentCalculationRule);
+        invoice.setProratedDays(proratedDays);
+        invoice.setRentAmount(rentAmount);
+        invoice.setElectricityAmount(electricityAmount);
+        invoice.setWaterAmount(waterAmount);
+        invoice.setTotalAmount(totalAmount);
+        invoice.setStatus(InvoiceStatus.UNPAID);
+        invoice.setIssuedAt(issuedAt);
+        invoice.setDueAt(issuedAt.plus(48, ChronoUnit.HOURS));
+        return invoice;
+    }
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "contract_id", nullable = false)
     private Contract contract;
 
     @OneToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "billing_cycle_item_id", nullable = true)
-    private BillingCycleItem billingCycleItem;
+    @JoinColumn(name = "billing_period_id", nullable = true)
+    private BillingPeriod billingPeriod;
 
     @Column(name = "billing_period_end_date", nullable = false)
     private LocalDate billingPeriodEndDate;

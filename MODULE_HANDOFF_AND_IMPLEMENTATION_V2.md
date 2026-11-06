@@ -30,10 +30,10 @@
 ### 0.2. Điều kiện foundation trước khi 6 người bắt đầu
 
 - Chốt schema bằng một `schema.sql` tự tạo database phát triển cục bộ tên `RentalApartmentDev` khi chưa có và chạy thủ công một lần trên SQL Server của mỗi thành viên, không dùng Flyway; JPA dùng `ddl-auto=validate`. Mỗi máy đặt `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` riêng qua biến môi trường, không đưa mật khẩu database vào Git. Foundation bổ sung starter Web MVC phù hợp Spring Boot 4.1.1 trong `pom.xml`. Giữ enum, tiền `BigDecimal`/`DECIMAL(19,0)`, ngày nghiệp vụ UTC+7, thời điểm UTC, chính sách `[from,to)`.
-- Trưởng nhóm dựng **tất cả 10 bảng, constraint/index và JPA Entity/relationship** trên nhánh foundation rồi merge `main` trước khi bàn giao. `seed_admin.sql` chạy thủ công một lần để tạo Admin mẫu `admin@rental.local` với hash BCrypt; M01 dùng `BCryptPasswordEncoder` để kiểm tra mật khẩu, còn mật khẩu bản rõ được chia sẻ riêng ngoài Git. Filtered unique index giới hạn tối đa một ADMIN. Đây là **điều kiện triển khai**, chỉ đánh dấu `DONE` khi script đã chạy, Entity đã được kiểm tra và Admin seed thực sự tồn tại trên database của môi trường tương ứng; nếu chưa, thành viên vẫn có thể làm DTO/service thuần/Thymeleaf mock nhưng chưa được coi là đã có Entity chạy thật.
+- Trưởng nhóm dựng **tất cả 10 bảng, constraint/index và JPA Entity/relationship** trên nhánh foundation rồi merge `main` trước khi bàn giao. `seed_data.sql` chạy thủ công một lần để tạo Admin mẫu `admin@rental.local` và dữ liệu demo với hash BCrypt; mật khẩu Admin phát triển cũng có trong file seed để tiện đăng nhập local. Chỉ dùng bộ credential này cho dữ liệu demo. M01 dùng `BCryptPasswordEncoder` để kiểm tra mật khẩu. Filtered unique index giới hạn tối đa một ADMIN. Đây là **điều kiện triển khai**, chỉ đánh dấu `DONE` khi script đã chạy, Entity đã được kiểm tra và Admin seed thực sự tồn tại trên database của môi trường tương ứng; nếu chưa, thành viên vẫn có thể làm DTO/service thuần/Thymeleaf mock nhưng chưa được coi là đã có Entity chạy thật.
 - Sau foundation, MO duy trì Repository/Service, đề xuất thay đổi Entity/schema qua PR trưởng nhóm review. Không giao sáu người tạo lại sáu nhóm Entity vốn đã có sẵn.
 - Chốt `CurrentUser`/Role, skeleton Thymeleaf, tên route/feature package, tiêu chuẩn DTO/Port, cấu hình test, dữ liệu seed ADMIN có CCCD; chốt ai duyệt thay đổi code dùng chung (`pom.xml`, `SecurityConfig`, global layout/schema SQL).
-- Đã chốt: `area_m2` có thể NULL nhưng nếu có phải > 0; `floor_number` bắt buộc > 0; giá niêm yết Room và giá tháng Contract đều > 0; không đặt thời hạn thuê tối thiểu mới ngoài `planned_end_date > start_date`; email đăng nhập phân biệt hoa/thường, chỉ bỏ khoảng trắng đầu/cuối. Những việc còn cần chọn cho demo/module: cách lưu/upload ảnh phòng, cổng sandbox và dữ liệu demo kỳ ngày 10. **Không tự biến giả định thành Business Rule**.
+- Đã chốt: `area_m2` có thể NULL nhưng nếu có phải > 0; `floor_number` bắt buộc > 0; giá niêm yết Room và giá tháng Contract đều > 0; không đặt thời hạn thuê tối thiểu mới ngoài `planned_end_date > start_date`; email đăng nhập phân biệt hoa/thường, chỉ bỏ khoảng trắng đầu/cuối. Những việc còn cần chọn cho demo/module: cách lưu/upload ảnh phòng, cổng sandbox và dữ liệu demo các kỳ cá nhân. **Không tự biến giả định thành Business Rule**.
 
 ## 1. Phạm vi và trách nhiệm của 6 người
 
@@ -43,7 +43,7 @@
 | **M02 — Room / TV2** | `rooms` | UC04–09, UC22 | 7 | Cung cấp RoomQuery, giữ/giải phóng Room; giữ quy tắc Room status. |
 | **M03 — Application / TV3** | `rental_applications` | UC10–15 | 6 | WO duyệt đơn online; điều khiển vòng đời Application. |
 | **M04 — Contract / TV4** | `contracts`, `contract_co_occupants` | UC16–21, UC23, UC34 | 8 | WO cho thuê trực tiếp, kết thúc Contract; cung cấp Contract snapshot. |
-| **M05 — Billing & Sandbox / TV5** | `billing_cycles`, `billing_cycle_items`, `invoices` | UC24–29, UC33 | 7 | Chịu trách nhiệm trọn luồng kỳ thu/Invoice/sandbox; **duy nhất viết Invoice**. |
+| **M05 — Billing & Sandbox / TV5** | `billing_periods`, `invoices` | UC24–29, UC33 | 7 | Chịu trách nhiệm phát hành theo từng Contract, Invoice/sandbox; **duy nhất viết Invoice**. |
 | **M06 — Collection, Settlement & Notification / TV6** | `notifications` | UC30–32, UC35, UC39–40 | 6 | Quyết toán, công nợ, xác nhận thu tiền qua M05, thông báo; Dashboard query. |
 
 **Cân bằng tải:** Không đánh giá dựa thuần số UC. M04 và M05 thường nặng hơn; WO và MO phải cam kết **bàn giao năng lực nhỏ, sớm** thay vì đợi toàn bộ module hoàn thành. M05 giữ trọn sandbox, không xé lẻ cho người thiếu chuyên môn.
@@ -78,7 +78,7 @@
 - **Làm ngay:** UC01, UC02, UC03; CRUD và truy vấn UC37/38; kiểm thử quyền và dữ liệu Issue mẫu. **Ưu tiên số 1:** công bố `CurrentUser` + Role để cả nhóm không chờ.
 - **UC36 / tuần tự:** M04 cung cấp ContractActivityQuery thật → M01 làm rule tạo Issue. **Song song:** M01 viết `IssueCreationService` dựa trên Port + mock các trạng thái ACTIVE/không ACTIVE; M04 viết query, ghép ở P2.
 - **UC38 / tuần tự:** M06 làm NotificationService → M01 gọi. **Song song:** M01 phát event sau khi Issue cập nhật thành công; M06 viết handler. Notification là phụ thuộc mềm.
-- **Tránh đè file:** TV1 là owner `SecurityConfig`, đăng ký/login controllers và `UserRepository`. M05 cung cấp **chính sách** chặn giao diện Admin kỳ thu, TV1 tích hợp tại một điểm chung; không để cả hai tự sửa SecurityConfig mà không review. Quy tắc chặn phải không tạo redirect loop khi mở biểu mẫu điện nước.
+- **Tránh đè file:** TV1 là owner `SecurityConfig`, đăng ký/login controllers và `UserRepository`. M05 kiểm tra role Admin ở lệnh phát hành; không còn chính sách khóa toàn bộ giao diện quản trị vì kỳ thu chờ nhập.
 
 ### 2.4. Ticket và thứ tự gợi ý
 
@@ -116,7 +116,7 @@
 | **M02 ← M04/M06/M05** | UC08 | Kết quả hủy/kết thúc Contract và khoản quyết toán. | Chạy nhánh INACTIVE khi trống trước; phần RENTED mock TerminationResult, chỉ nghiệm thu khi bốn module ghép thật. |
 | **M02 → M03** | UC10/14 | RoomAvailabilityQuery; khi APPROVE phải kiểm tra lại Room, không dùng trạng thái lúc gửi đơn. | Cấp DTO/mẫu ngay cho M03; ghép khóa/phát hiện cạnh tranh. |
 | **M02 → M04** | UC16/17/19/21/34 | Giá Room tại lúc tạo Contract; `reserveRoom/releaseRoom`; `closeRoom` có điều kiện. | Bàn giao Port + contract lỗi từ đầu; M04 mock để phát triển. |
-| **M02 → M05** | UC24/25 | RoomSummary, roomCode/phân nhóm phòng hiển thị. | M05 mock danh sách trước. |
+| **M02 → M05** | — | Không còn provider bắt buộc; M04 ContractBillingSnapshot có roomCode cần hiển thị. | M05 lấy roomCode từ Query M04. |
 | **M02 → M01/M06** | UC36/37, Dashboard | RoomSummary và `countRoomsByStatus`. | Read DTO, không đưa RoomRepository cho bên ngoài. |
 
 ### 3.3. Công việc độc lập và hướng giải quyết
@@ -199,13 +199,13 @@
 | **UC20** | Scheduler SCHEDULED→ACTIVE | **BR-CON-03/11:** đúng startDate, kể cả no-show, không tự hủy; Room vẫn RENTED. | **P0/P1**, M02 nếu cần query đồng bộ. |
 | **UC21** | Scheduler ACTIVE→ENDED | **BR-CON-04/12**, **BR-TERM-07:** hết hạn tự nhiên, Room AVAILABLE, không gia hạn; M05 vẫn thu được kỳ cuối. | **P1/P2** M05, M02. |
 | **UC23** | Admin quản lý người ở cùng | **BR-ACC-03/04/05/06/08:** chỉ Admin; tên/CCCD bắt buộc, không trùng CCCD trong Contract, không vượt capacity; không sửa sau ENDED/CANCELLED, không User riêng. | **P1** M02 capacity. |
-| **UC34** | Kết thúc ACTIVE trước hạn | **BR-CON-10/13, BR-TERM-01..09:** effectiveEndDate là hôm nay UTC+7; reason quyết định cách tính; biên ngày 10 có ngoại lệ; kết thúc không cần Invoice đã PAID. | **P1/P2 CỨNG** M06, M05, M02. |
+| **UC34** | Kết thúc ACTIVE trước hạn | **BR-CON-10/13, BR-TERM-01..09:** effectiveEndDate là hôm nay UTC+7; reason quyết định cách tính; ranh giới kỳ cá nhân có ngoại lệ; kết thúc không cần Invoice đã PAID. | **P1/P2 CỨNG** M06, M05, M02. |
 
 ### 5.2. Trách nhiệm **Workflow Owner**
 
 1. **Direct Rental (UC17): M04**. Runtime: kiểm tra User/ngày → khóa và kiểm tra lại Room AVAILABLE, giá hiện hành > 0 → M04 tạo Contract SCHEDULED/ACTIVE phù hợp → M02 giữ Room → M03 reject PENDING cạnh tranh, trong một transaction; không tạo Application giả. Nếu unique filtered index chặn vì phòng đã được giữ, rollback và báo xung đột; không tạo logic/Entity mới để thay index.
 2. **Cancel SCHEDULED (UC19): M04**. CANCELLED và M02 release/INACTIVE theo yêu cầu Admin trong cùng nghiệp vụ; không gọi M06 tính kỳ cuối.
-3. **Natural Expiry (UC21): M04**. Contract ACTIVE→ENDED ngày 10 và Room AVAILABLE; phải bảo toàn dữ liệu/nhận diện nghĩa vụ REGULAR kỳ vừa ở để M05 không bỏ qua khi scheduler có thứ tự chạy khác.
+3. **Natural Expiry (UC21): M04**. Contract ACTIVE→ENDED theo planned_end_date và Room AVAILABLE; phải bảo toàn dữ liệu/nhận diện kỳ REGULAR cuối theo startDate để M05 truy ra kể cả sau khi Contract ENDED.
 4. **ACTIVE Early Termination (UC34): M04**. Lấy snapshot Contract, xác định reason/khung thời gian; M06 **chỉ tính chính sách quyết toán**, M05 **ghi Invoice hoặc NO_CHARGE**, M04 lưu kết quả và ENDED, M02 đổi Room. M04 là đầu mối điều phối end-to-end; không tự tính tiền, không tự ghi Invoice.
 5. **Nếu M02 nhận yêu cầu đóng phòng RENTED (UC08):** UI/controller M02 gọi **cùng workflow termination của M04** với reason `ADMIN_STOP_SERVICE` và đích Room `INACTIVE`; không tự tạo luồng kết thúc thứ hai. Quy ước phối hợp này đã được chốt; chi tiết Port/DTO và thứ tự khóa cần thống nhất khi tích hợp module.
 
@@ -216,7 +216,7 @@
 | **M04 ← M01** | UC16/17/18 | UserSummary + role; CCCD đã bắt buộc từ đăng ký. | Mock UserSummary trước, Auth thật P2. |
 | **M04 ← M02** | UC16/17/19/21/23/34 | Giá Room hiện hành, capacity, reserve/release/close. | M04 viết coordinator với RoomOccupancyPort mock; M02 làm command thật; ghép transaction. |
 | **M04 ← M03** | UC16/17 | ApplicationQuery; reject pending sau direct. | M04 mock Application và command, M03 viết service thật. |
-| **M04 ← M06** | UC34 | `SettlementCalculation(snapshot, reason, electricity, water)` → amount/rule. | M04 mock kết quả; M06 viết máy tính thuần/test ngày 10; P2 gắn thật. |
+| **M04 ← M06** | UC34 | `SettlementCalculation(snapshot, reason, electricity, water)` → amount/rule. | M04 mock kết quả; M06 viết máy tính thuần/test ranh giới kỳ; P2 gắn thật. |
 | **M04 ← M05** | UC21/34 | Query kỳ cuối, issueFinalInvoice/NO_CHARGE, result + conflict. | M04 mock InvoiceCommand; M05 cung cấp implementation chống trùng. |
 | **M04 → M01** | UC36 | `hasActiveContract(userId, roomId)`. | Công bố Query sớm, có dữ liệu mẫu. |
 | **M04 → M03** | UC14 | `createFromApplication`/Result. | Trả failure rõ ràng, không để M03 tự ghi Contract. |
@@ -253,33 +253,32 @@
 
 | UC | Phải xây dựng | BR trọng tâm | Phụ thuộc |
 |---|---|---|---|
-| **UC24** | Scheduler tạo/kiểm tra BillingCycle ngày 10 | **BR-BILL-01/02/08:** cycle10; thu sau khi ở; chạy lại/restart/login không tạo kỳ/item trùng. | **P1** M04/M02. |
-| **UC25** | Admin nhập điện+nước | **BR-BILL-05/06/19:** nhập **số tiền** chứ không đọc công tơ/tự nhân giá; nhập đủ mọi nghĩa vụ kỳ; `NULL` chưa nhập, `0` đã nhập 0; khóa giao diện Admin thông thường đến khi đủ. | **P1/P2** M01 role/guard, M04/M02 tập phòng/hợp đồng. |
-| **UC26** | Tính tiền/phát hành Invoice | **BR-BILL-03/04/07/18:** dưới 14 ngày kỳ đầu prorate `monthly/30*days` HALF_UP cuối; kỳ khác tháng đầy đủ; giá Contract; tổng 0→NO_CHARGE; không Invoice trùng. | **P1** M04 ContractBillingSnapshot; Notification M06 mềm. |
+| **UC24** | Admin xem kỳ đến hạn theo từng hợp đồng | **BR-BILL-01/02/08:** kỳ cá nhân theo ngày bắt đầu thuê; tháng thiếu ngày 29–31 kết thúc vào cuối tháng; phát hành sau khi kỳ kết thúc. | **P1** M04 ContractBillingSnapshot. |
+| **UC25** | Admin nhập điện/nước và yêu cầu phát hành | **BR-BILL-05/06/19:** nhập số tiền, không đọc công tơ/tự nhân giá; xử lý từng Contract độc lập; `NULL` chưa nhập, `0` là 0. | **P1/P2** M01 role; M04 dữ liệu hợp đồng. |
+| **UC26** | Tính tiền/phát hành Invoice | **BR-BILL-03/04/07/18:** kỳ REGULAR dưới 14 ngày prorate `monthly/30*days` HALF_UP cuối; giá Contract; tổng 0→NO_CHARGE; không Invoice trùng. | **P1** M04 ContractBillingSnapshot; Notification M06 mềm. |
 | **UC27** | Tenant xem Invoice mình | Chỉ người đại diện, gồm UNPAID/OVERDUE/PAID; lịch sử Contract đã kết thúc vẫn đọc được. | **P0/P1** M01. |
 | **UC28** | Tenant bắt đầu sandbox | **BR-BILL-09/10/11:** đúng chủ, Invoice `UNPAID`, now `< dueAt`, trả toàn bộ, không mở sandbox quá hạn. | **P0/P1** với Invoice mẫu + gateway. |
 | **UC29** | Xác minh callback/giao dịch | **BR-BILL-13/14/21/23:** xác minh server-side, chống lặp; thất bại giữ UNPAID; callback thành công muộn/xung đột để Admin đối chiếu, không ghi đè PAID. | **P1/P2** gateway, M06 Notification mềm. |
 | **UC33** | Lịch sử thanh toán | **BR-BILL-16:** danh sách `Invoice PAID`, không có Payment/Attempt Entity; Tenant xem của mình, Admin được phép tra theo quyền. | **P0** với Invoice mẫu. |
 
-### 6.2. Trách nhiệm **Workflow Owner**: ngày 10 → Invoice → sandbox
+### 6.2. Trách nhiệm **Workflow Owner**: kỳ cá nhân → Invoice → sandbox
 
-- **WO: M05**, không chia cho M06. M05 xử lý `BillingCycle`, `BillingCycleItem`, `Invoice`, form điện nước, xác minh sandbox và cập nhật PAID qua adapter riêng.
-- **Trình tự runtime định kỳ:** Scheduler ngày 10 bảo đảm cycle/items duy nhất → Admin đăng nhập, hệ thống buộc hoàn thành điện+nước **tất cả nghĩa vụ** → M05 tính rent từ giá Contract → phát hành Invoice UNPAID hoặc ghi NO_CHARGE → commit → M06 nhận sự kiện thông báo → Tenant xem/trả Invoice bằng sandbox nếu hợp lệ → gateway xác minh và M05 cập nhật PAID một lần.
-- **Dữ liệu M04 bắt buộc:** Contract đã ENDED đúng ngày 10 vẫn phải được tính vào nghĩa vụ kỳ vừa sử dụng, không chỉ query `status=ACTIVE` ở thời điểm scheduler chạy.
-- **Nhánh Tenant trả sớm đúng ngày 10 sau kỳ sử dụng:** kỳ cũ do REGULAR xử lý; không tạo kỳ mới 0 ngày hoặc Invoice EARLY_SETTLEMENT; có thể chờ Admin chốt điện nước dù Contract đã ENDED; không sửa Invoice đã phát hành.
-- **PAID** chứa `paidAt`, `paymentMethod` SANDBOX/CASH/BANK_TRANSFER, tham chiếu nếu có. Không lưu lịch sử attempt riêng; callback cùng dữ liệu/điều kiện idempotent.
+- **WO: M05**, không chia cho M06. M05 xử lý `BillingPeriod`, `Invoice`, form từng hợp đồng, xác minh sandbox và cập nhật PAID qua adapter riêng.
+- **Trình tự runtime định kỳ:** M05 gợi ý kỳ kế tiếp từ ngày bắt đầu và BillingPeriod gần nhất → Admin chọn hợp đồng đã đến hạn, nhập điện/nước, phát hành riêng → M05 ghi Invoice UNPAID hoặc NO_CHARGE → M06 nhận sự kiện thông báo → Tenant xem/trả Invoice bằng sandbox nếu hợp lệ → gateway xác minh và M05 cập nhật PAID một lần.
+- **Không có chu kỳ chung hoặc hard gate:** Admin có thể xử lý một phòng dù phòng khác chưa nhập dữ liệu. Mỗi kỳ được xử lý tuần tự trong cùng Contract; không yêu cầu Scheduler phát hành hóa đơn.
+- **Dữ liệu M04 bắt buộc:** `ContractBillingSnapshot` gồm startDate, planned/effective end, giá đã thỏa thuận, status, tenant và room code; M05 cần Contract đã ENDED tự nhiên hoặc Tenant kết thúc đúng ranh giới kỳ để chốt kỳ REGULAR cuối.
+- **PAID** chứa `paidAt`, `paymentMethod` mới chỉ CASH/BANK_TRANSFER (VNPAY ghi BANK_TRANSFER), tham chiếu nếu có. Giữ SANDBOX chỉ để đọc Invoice cũ; không lưu lịch sử attempt riêng; callback cùng dữ liệu/điều kiện idempotent.
 - **Overdue:** `dueAt = issuedAt + 48h`; M06 sở hữu UC31 nhưng **chỉ M05 ghi Invoice OVERDUE** qua command; thanh toán muộn cần Admin đối chiếu/thu ngoài đời theo rule.
 
 ### 6.3. Phụ thuộc hai chiều và giao tiếp M05–M06 (giao sớm)
 
 | Chiều | UC | Nội dung giao tiếp | Làm song song / tuần tự |
 |---|---|---|---|
-| **M05 ← M04** | UC24/26 | `ContractBillingSnapshot` giá đã chốt + khoảng sử dụng, gồm Contract vừa kết thúc. | Song song bằng snapshot mock; tuần tự khi Query M04 có sớm. |
-| **M05 ← M02** | UC24/25 | RoomSummary / roomCode; phân loại phòng cần hiển thị. | Mock danh sách phòng; ghép Query. |
-| **M05 ← M01** | UC25/27/28 | Admin/Tenant/Invoice owner; điểm tích hợp mandatory billing gate. | M05 viết `MandatoryBillingGatePolicy`; M01/đầu mối config tích hợp guard, không cùng sửa SecurityConfig. |
+| **M05 ← M04** | UC24/26 | `ContractBillingSnapshot` giá đã chốt, start/end và dữ liệu người thuê/phòng, gồm Contract vừa kết thúc đủ điều kiện. | Song song bằng snapshot mock; tuần tự khi Query M04 có sớm. |
+| **M05 ← M01** | UC25/27/28 | Role Admin/Tenant; route/command có kiểm soát quyền. | M05 kiểm tra quyền thao tác, M01 tích hợp guard chung. Không có hard gate toàn Admin. |
 | **M05 ← M06** | UC26/29 | Notification event listener; UC35 cung cấp số tiền quyết toán lý do kết thúc. | Notification làm sau; tính quyết toán mock khi viết issueFinalInvoice. |
 | **M05 → M06** | UC30 | `confirmManualPayment(invoiceId, adminId, method, ...)`, chỉ UNPAID/OVERDUE→PAID đủ tiền. | M05 công bố Port sớm; M06 mock trước; M05 ghi thật. |
-| **M05 → M06** | UC29/30 | `confirmVerifiedSandboxPayment` với chứng cứ gateway đã xác minh; giữ SANDBOX nếu Admin đối chiếu. | Mock success/conflict rồi ghép M05 thực. |
+| **M05 → M06** | UC29/30 | `confirmVerifiedSandboxPayment` với chứng cứ gateway đã xác minh; dữ liệu mới dùng BANK_TRANSFER khi Admin đối chiếu. | Mock success/conflict rồi ghép M05 thực. |
 | **M05 → M06** | UC31/32 | `markOverdueInvoices(now)` và `findOutstandingInvoices(filter)`. | M06 mock InvoiceSummary; M05 làm Query/Command. |
 | **M05 → M06/M04** | UC35/34 | `issueFinalInvoice(request)`→ `INVOICED(invoiceId)` hoặc `NO_CHARGE`; khóa chống trùng Contract+mốc kỳ. | M04/M06 mock result; ghép thật khi test termination. |
 | **M05 → M06** | Dashboard | `getInvoiceTotals` tổng PAID, số UNPAID/OVERDUE. | M06 mock aggregate. |
@@ -294,11 +293,11 @@
 | M05-T01 | Invoice DTO/Query/Command ports công bố cho M06/M04 | P0 | M06 viết mock được, status/error rõ. |
 | M05-T02 | UC27/33 với Invoice demo | P0 | Đúng quyền, lịch sử PAID không cần Payment entity. |
 | M05-T03 | UC28/29 sandbox với Invoice giả | P0/P1 | Thành công, thất bại, callback lặp và xác minh server-side. |
-| M05-T04 | UC24/25 cycle10 + Admin form | P1 | Kỳ/item duy nhất, hard gate và dữ liệu nhập bền khi phát hành lỗi. |
-| M05-T05 | UC26 tính tiền/phát hành, NO_CHARGE | P1 | Test <14 ngày, >=14 ngày, giá Contract, HALF_UP, total=0, retry. |
+| M05-T04 | UC24/25 BillingPeriod theo hợp đồng + Admin form | P1 | Kỳ cá nhân duy nhất, không hard gate; nhập utility/phát hành từng phòng. |
+| M05-T05 | UC26 tính tiền/phát hành, NO_CHARGE | P1 | <14 ngày, >=14 ngày, ngày 29–31, giá Contract, HALF_UP, total=0, retry. |
 | M05-T06 | InvoiceCommands cho M06 và M04 | P1→P2 | Manual paid, overdue, sandbox reconciliation, final invoice idempotent. |
-| M05-T07 | Ghép M04/M02/Auth, sandbox Invoice thật | P2 | Kỳ→Invoice→sandbox→PAID; không trùng khi scheduler chạy lại. |
-| M05-T08 | Biên ngày 10, cạnh tranh callback/thu thực, events M06 | P2 | Không tạo Invoice kỳ mới giả, callback không ghi PAID hai lần. |
+| M05-T07 | Ghép M04/Auth, sandbox Invoice thật | P2 | Kỳ Contract→Invoice→sandbox→PAID; không trùng khi gửi lại. |
+| M05-T08 | Ranh giới kỳ cá nhân, cạnh tranh callback/thu thực, events M06 | P2 | Không tạo Invoice kỳ mới giả, callback không ghi PAID hai lần. |
 
 **Definition of Done:** M05 chạy trọn luồng phát hành/sandbox; M06 được dùng Query/Command thật; dữ liệu Invoice không bị module khác ghi; không có mock gateway ở demo cuối.
 
@@ -310,10 +309,10 @@
 
 | UC | Phải xây dựng | BR trọng tâm | Phụ thuộc |
 |---|---|---|---|
-| **UC30** | Admin xác nhận đã nhận tiền trực tiếp hoặc đối chiếu giao dịch SANDBOX | **BR-BILL-12/20/21/23:** đúng số tiền trên Invoice; UNPAID/OVERDUE→PAID; đã PAID không ghi đè; xác minh sandbox giữ method SANDBOX. | **P1/P2 CỨNG** M05 InvoiceCommand. |
+| **UC30** | Admin xác nhận đã nhận tiền trực tiếp hoặc đối chiếu giao dịch VNPAY | **BR-BILL-12/20/21/23:** đúng số tiền trên Invoice; UNPAID/OVERDUE→PAID; đã PAID không ghi đè; dữ liệu mới chỉ CASH/BANK_TRANSFER. | **P1/P2 CỨNG** M05 InvoiceCommand. |
 | **UC31** | Phát hiện quá hạn | **BR-BILL-11/17:** từ `dueAt` chưa trả trở thành OVERDUE; không giả PAID; chạy lại an toàn. | **P1/P2 CỨNG** M05. |
 | **UC32** | Admin lọc công nợ | Bao gồm UNPAID/OVERDUE, cả hợp đồng ENDED; không cộng PAID vào công nợ. | **P1** M05 InvoiceQuery. |
-| **UC35** | Tính quyết toán kỳ cuối | **BR-TERM-01..09:** Tenant trả trong kỳ thu nguyên kỳ + điện nước; Admin stop prorate theo số ngày + điện nước; Tenant trả đúng biên ngày 10 sau kỳ ở dùng REGULAR kỳ cũ; total=0→NO_CHARGE. | **P1/P2 CỨNG** M04/M05/M02. |
+| **UC35** | Tính quyết toán kỳ cuối | **BR-TERM-01..09:** Tenant trả giữa kỳ thu nguyên kỳ + điện nước; Admin stop prorate theo số ngày + điện nước; Tenant trả đúng ranh giới kỳ cá nhân dùng REGULAR kỳ cũ; total=0→NO_CHARGE. | **P1/P2 CỨNG** M04/M05/M02. |
 | **UC39** | Admin tạo thông báo thủ công | **BR-NOTI-01/05/06:** chỉ Admin gửi; một bản/recipient; thông báo trong website, không SMS/email. | **P0**, Auth M01. |
 | **UC40** | Xem/đánh dấu đọc thông báo | **BR-NOTI-03/05:** chỉ người nhận, UNREAD→READ, không xem người khác. | **P0**, Auth M01. |
 
@@ -398,29 +397,28 @@
 | **WO kỳ thu** | **M05** | Bảo đảm nghĩa vụ REGULAR của kỳ vừa kết thúc không bị bỏ sót/trùng, kể cả Contract đã ENDED. |
 | **Provider** | M02 | Room giữ RENTED khi ACTIVE, về AVAILABLE khi kết thúc tự nhiên. |
 
-**Không được hiểu nhầm:** Kết thúc tự nhiên đúng ngày 10 **không** bị tính như Tenant tự trả sớm. Hợp đồng ENDED không phải căn cứ bỏ kỳ tiền thuê cuối. Scheduler có thể chạy lại/đảo thứ tự: M04 kết thúc lúc 00:00, M05 tạo kỳ sau đó, hoặc M05 xử lý trước M04. Hai luồng phải nhìn ra cùng nghĩa vụ kỳ `[10 trước,10 hiện tại)`. Không gia hạn hoặc tự đổi plannedEndDate.
+**Không được hiểu nhầm:** Kết thúc tự nhiên đúng planned_end_date **không** bị tính như Tenant tự trả sớm. Hợp đồng ENDED vẫn có thể còn kỳ REGULAR cuối theo startDate. M05 không phát hành tự động; Admin có thể phát hành nghĩa vụ còn lại sau khi M04 đã kết thúc Contract. Không gia hạn hoặc tự đổi plannedEndDate.
 
 **Code trước–sau:** M04 viết scheduler trên Clock giả; M05 viết duty selection trên ContractBillingSnapshot giả; M02 viết release. P2 dùng dữ liệu thật và kiểm thử hai thứ tự Scheduler, restart server, chạy nhiều lần. **Kiểm thử:** E2E-06/07/08/13/23/24.
 
-### WF-04 — Đến ngày 10, Admin nhập điện nước, Invoice và sandbox (UC24–29, UC33)
+### WF-04 — Admin phát hành theo từng hợp đồng (UC24–29, UC33)
 
 | Vai trò | Người | Nhiệm vụ |
 |---|---|---|
-| **WO, MO Invoice** | **M05** | Tạo cycle/item, form tiền điện nước, tính tiền, phát hành, sandbox, lịch sử PAID. |
-| **Provider** | M04 | ContractBillingSnapshot, cả khoản đã sử dụng của Contract vừa ENDED. |
-| **Provider** | M02 | RoomSummary phục vụ UI biểu mẫu. |
-| **Provider** | M01 | Quyền Admin/Tenant và điểm tích hợp hard gate. |
+| **WO, MO Invoice** | **M05** | Kỳ cá nhân, form từng hợp đồng, tính tiền, phát hành, sandbox, lịch sử PAID. |
+| **Provider** | M04 | ContractBillingSnapshot gồm ngày bắt đầu/kết thúc, giá, trạng thái, Tenant và roomCode; cả kỳ cuối sau khi Contract ENDED. |
+| **Provider** | M01 | Quyền Admin/Tenant và điểm kiểm tra role trên thao tác. |
 | **Consumer mềm** | M06 | Notification sau InvoiceIssued/Paid. |
 
 **Bước runtime:**
 
-1. Vào ngày 10, M05 tạo/kiểm tra duy nhất `BillingCycle(collectionDate)` và một `BillingCycleItem` cho mỗi Contract thuộc kỳ, bảo toàn dữ liệu lần nhập cũ.
-2. Admin đăng nhập khi cycle PENDING_INPUT bị chặn khỏi giao diện nghiệp vụ thông thường, vào form nhập **đủ tiền điện và nước cho mọi nghĩa vụ**. Không dùng công tơ/rate tự tính; `null ≠ 0`.
-3. M05 tính rent: kỳ đầu dưới 14 ngày `agreedRent / 30 × days`, HALF_UP khoản cuối; kỳ đầu >=14/kỳ thông thường đủ tháng; tổng rent+điện+nước.
-4. Tổng >0: tạo duy nhất Invoice REGULAR, `UNPAID`, `dueAt=issuedAt+48h`; tổng 0: item NO_CHARGE, không Invoice 0 đồng. Chỉ khi mọi item đã INVOICED/NO_CHARGE mới COMPLETED cycle.
-5. Commit Invoice → M06 xử lý thông báo. Tenant chính chủ xem Invoice, nếu `UNPAID` và `now<dueAt` thì M05 tạo yêu cầu sandbox; xác minh server-side callback và ghi PAID đúng một lần; thất bại còn hợp lệ có thể thử lại.
+1. M05 xác định kỳ kế tiếp từ `Contract.startDate` và BillingPeriod gần nhất. Ngày neo 29–31 được chốt vào cuối tháng ngắn hơn; tháng sau dùng lại ngày neo gốc.
+2. Sau khi kỳ đã kết thúc, trang Admin hiển thị riêng hợp đồng/phòng đến hạn. Admin nhập tiền điện nước cho hợp đồng đó rồi bấm phát hành; việc chưa nhập phòng khác không chặn thao tác.
+3. M05 xác minh Admin, trạng thái Contract, kỳ đến hạn và khóa chống trùng; tính rent (kỳ REGULAR dưới 14 ngày `agreedRent / 30 × days`, HALF_UP khoản cuối), cộng điện nước.
+4. Tổng >0: tạo một BillingPeriod INVOICED và Invoice REGULAR `UNPAID`, `dueAt=issuedAt+48h`. Tổng 0: lưu BillingPeriod NO_CHARGE, không tạo Invoice 0 đồng.
+5. Commit → M06 xử lý thông báo. Tenant chính chủ xem Invoice; nếu `UNPAID` và `now<dueAt`, M05 tạo yêu cầu sandbox, xác minh callback server-side và ghi PAID đúng một lần; thất bại còn hợp lệ có thể thử lại.
 
-**Code trước–sau:** TV5 **không chờ** Contract thật mới thử sandbox; dùng Invoice fixture. M05 và M04 thỏa thuận Snapshot ngày 1; M05 có thể viết công thức với mock. M01 tích hợp guard khi M05 trả policy trạng thái; M06 gắn Notification sau cùng. **Kiểm thử:** chạy scheduler nhiều lần, nhập thiếu 1 Room, zero, sai quyền, callback lặp, callback muộn, ngày 10 biên, 48h, Invoice không chỉnh tiền sau phát hành.
+**Code trước–sau:** TV5 dùng Invoice fixture để thử sandbox độc lập; M05 dùng ContractBillingSnapshot fixture để xây kỳ cá nhân. Không có Scheduler phát hành hóa đơn hoặc hard gate toàn Admin. **Kiểm thử tích hợp:** ngày 29–31, kỳ REGULAR ngắn/dài hơn 14 ngày, nhập thiếu một khoản, zero, hai yêu cầu cùng Contract/kỳ, callback lặp/muộn, 48h, Invoice bất biến sau phát hành.
 
 ### WF-05 — Thu tiền ngoài hệ thống, quá hạn, công nợ (UC30/31/32 + UC27/33)
 
@@ -429,7 +427,7 @@
 | **WO thao tác Admin/Scheduler** | **M06** | Giao diện thu tiền/công nợ, cron overdue, kiểm tra quyền giao diện, test workflow. |
 | **MO Invoice** | **M05** | Đọc Invoice, kiểm tra lại state, thực hiện `UNPAID/OVERDUE→PAID` hoặc `UNPAID→OVERDUE` nguyên tử. |
 
-**Bước runtime:** Admin chọn Invoice chưa trả → chọn kênh CASH/BANK_TRANSFER hoặc đối chiếu SANDBOX đã xác minh → M06 gửi lệnh cho M05 → M05 kiểm tra lại Invoice tồn tại, trạng thái, số tiền đã nhận đủ; ghi paidAt, đúng method, idempotent. Scheduler M06 yêu cầu M05 đổi UNPAID thực sự quá dueAt thành OVERDUE. Người thuê không tự online trả Invoice OVERDUE; Admin vẫn tra được nợ của Contract ENDED.
+**Bước runtime:** Admin chọn Invoice chưa trả → chọn CASH/BANK_TRANSFER sau khi đã nhận đủ, hoặc đối chiếu VNPAY đã xác minh (cũng lưu BANK_TRANSFER) → M06 gửi lệnh cho M05 → M05 kiểm tra lại Invoice tồn tại, trạng thái, số tiền đã nhận đủ; ghi paidAt, đúng method, idempotent. Scheduler M06 yêu cầu M05 đổi UNPAID thực sự quá dueAt thành OVERDUE. Người thuê không tự online trả Invoice OVERDUE; Admin vẫn tra được nợ của Contract ENDED.
 
 **Code trước–sau:** M06 làm form, filter, job với mock `InvoiceQuery/Command`, M05 làm command và gateway verification độc lập. **Kiểm thử:** Admin và gateway đến gần đồng thời; PAID giữ nguyên, callback trễ không biến phương thức thành CASH; OVERDUE không bị coi là miễn nợ.
 
@@ -454,7 +452,7 @@
 **Hai ngoại lệ quan trọng:**
 
 - Nếu **SCHEDULED** bị Admin hủy trước khi bắt đầu: UC19 → CANCELLED, không phải UC34, không phát hành tiền thuê kỳ cuối; M02 release/INACTIVE đúng lựa chọn Admin.
-- Nếu Tenant tự kết thúc đúng **ngày 10 sau kỳ đã sử dụng**, chưa dùng ngày nào của kỳ mới: M04 end + M02 release nhưng **không** gọi `issueFinalInvoice`/không ghi dấu settlement sớm; M05 xử lý REGULAR kỳ vừa kết thúc, kể cả khi Admin chốt điện nước/phát hành sau khi Contract ENDED. Không tạo tiền kỳ mới 0 ngày/Invoice thứ hai.
+- Nếu Tenant tự kết thúc đúng **ranh giới kỳ cá nhân sau kỳ đã sử dụng**, chưa dùng ngày nào của kỳ mới: M04 end + M02 release nhưng **không** gọi `issueFinalInvoice`/không ghi dấu settlement sớm; M05 xử lý REGULAR kỳ vừa kết thúc, kể cả khi Admin nhập điện nước/phát hành sau khi Contract ENDED. Không tạo tiền kỳ mới 0 ngày/Invoice thứ hai.
 
 **Code trước–sau:**
 
@@ -491,7 +489,7 @@
 | D10 | M04 ← M05 | UC21/34 | **CỨNG** | final invoice/no-charge, period query | Fake InvoiceCommand | Trước kỳ cuối/termination thật. |
 | D11 | M05 ← M04 | UC24–26 | Đọc | ContractBillingSnapshot gồm cả kỳ của ENDED | Snapshot fixture | Trước phát hành kỳ thật. |
 | D12 | M05 ← M02 | UC24/25 | Đọc | RoomSummary | Room fixture | Trước biểu mẫu tất cả phòng thật. |
-| D13 | M05 ← M01 | UC25/27/28 | Nền tảng | Actor Admin/Tenant, Invoice owner policy, hard gate | SecurityContext/mock guard | Trước test bảo mật và Admin login thật. |
+| D13 | M05 ← M01 | UC25/27/28 | Nền tảng | Actor Admin/Tenant, Invoice owner policy, quyền từng thao tác; không hard gate toàn Admin | SecurityContext/mock guard | Trước test bảo mật và Admin login thật. |
 | D14 | M06 ← M05 | UC30 | **CỨNG** | confirmManualPayment + trạng thái kết quả | Fake InvoiceCommand | Trước thu trực tiếp thật. |
 | D15 | M06 ← M05 | UC29/30 | **CỨNG** | confirmVerifiedSandboxPayment + bằng chứng gateway | Fake verified Result | Trước đối chiếu callback thật. |
 | D16 | M06 ← M05 | UC31 | **CỨNG** | markOverdueInvoices(now) | Fake overdue command | Trước job overdue thật. |
@@ -531,14 +529,14 @@ Mỗi dependency cứng/đọc phải có một **Dependency Contract** ngắn v
 
 | Ngày | Mục tiêu chính | Ai có thể làm độc lập | Đầu ra cần nghiệm thu |
 |---|---|---|---|
-| **D1** | Foundation chạy; chốt tên DTO/Port, owner các file chung và WO; tạo nhánh/ticket. | M01 Auth skeleton, M02 Room UI, M03 App state, M04 validation, M05 sandbox fixture, M06 Notification. | `schema.sql` và `seed_admin.sql` đã chạy một lần trên `RentalApartmentDev` cục bộ, 10 Entity/Enum map đúng và JPA `validate` đạt; kiểm tra thêm constraint bằng dữ liệu sai; `CurrentUser`, Room/Contract/Invoice ports tối thiểu và người phụ trách được công bố. Nếu foundation chưa xong, D1 chỉ là mục tiêu chứ chưa phải kết quả. |
+| **D1** | Foundation chạy; chốt tên DTO/Port, owner các file chung và WO; tạo nhánh/ticket. | M01 Auth skeleton, M02 Room UI, M03 App state, M04 validation, M05 sandbox fixture, M06 Notification. | `schema.sql` và `seed_data.sql` đã chạy một lần trên `RentalApartmentDev` cục bộ, 9 Entity/Enum map đúng và JPA `validate` đạt; kiểm tra thêm constraint bằng dữ liệu sai; `CurrentUser`, Room/Contract/Invoice ports tối thiểu và người phụ trách được công bố. Nếu foundation chưa xong, D1 chỉ là mục tiêu chứ chưa phải kết quả. |
 | **D2** | Các phần **P0** và mock giao tiếp; cung cấp Query sớm. | M01 UC01–03; M02 UC04–07/09; M03 UC11–13; M04 UC18/20; M05 Invoice DTO, sandbox; M06 UC39/40, calculator. | Mỗi người có route/service/test tự chạy được, không sửa Repo người khác. |
 | **D3** | Hoàn thành phần độc lập và viết workflow coordinator theo mock. | M03 UC14 mock; M04 UC16/17 mock; M05 UC24–26 snapshot mock; M06 UC30/31/32 mock. | Unit tests success/failure và sổ dependency cập nhật `MOCK_READY`. |
 | **D4** | Đóng băng giao tiếp P1 để ghép; Auth/Room/Contract queries thật. | M01/M02 hoàn thiện provider; M04 ContractBillingQuery; M05/06 tiếp tục sandbox, calculator. | Build chung xanh, `CurrentUser`, RoomQuery, ContractQuery dùng được; không tồn tại vòng constructor. |
 | **D5** | **Tích hợp WF-01 và WF-02** (M03/M04/M02). | M05 tiếp tục test sandbox & billing; M06 Notification + outstanding UI. | Approve online, Direct Rental, reject pending, Room RENTED, transaction/competing requests chạy thật. |
 | **D6** | **Tích hợp WF-03/04** (Contract kỳ cuối và Billing). | M01 ghép Issue; M06 ghép InvoiceQuery/Command. | Ngày 10 → form Admin → Invoice/NO_CHARGE; sandbox với Invoice thật, lịch sử PAID. |
 | **D7** | **Tích hợp WF-05/06** (manual/overdue/termination/inactive). | M01/M06 ghép Notification; M02 Dashboard count. | UC30–32 và UC34/35/08 đều chạy với DB thật, không mock ở nhánh end-to-end. |
-| **D8** | Test cạnh tranh, Scheduler, biên ngày 10/48h, retry. | Các owner fix phần mình, WO chạy test workflow; leader review schema/PR. | Không lặp Invoice/Contract, không PAID hai lần, không mất kỳ cuối. |
+| **D8** | Test cạnh tranh, kỳ cá nhân, ranh giới/48h, retry. | Các owner fix phần mình, WO chạy test workflow; leader review schema/PR. | Không lặp Invoice/Contract, không PAID hai lần, không mất kỳ cuối. |
 | **D9** | Kiểm thử E2E toàn vai trò; chỉnh UI; dữ liệu demo. | Song song các module sửa bug của mình; WO đảm nhận luồng tích hợp. | Guest/Tenant/Admin/Scheduler/Gateway demo được, không dữ liệu mock/placeholder. |
 | **D10** | Regression, khóa thay đổi nguy hiểm, chuẩn bị thuyết trình. | Mỗi người xác nhận Done và trình bày phần mình. | Nhánh main build ổn, script seed/demo, checklist test và bảng known limits. |
 
@@ -557,7 +555,7 @@ Mỗi dependency cứng/đọc phải có một **Dependency Contract** ngắn v
 
 | Khu vực code | Người chịu trách nhiệm chính | Ai được đề nghị sửa? |
 |---|---|---|
-| `schema.sql`, `seed_admin.sql`, các Entity/Enum ban đầu và common config | Trưởng nhóm/foundation trước handoff | MO gửi PR/đề xuất khi phát sinh thay đổi; leader duyệt. Script schema chạy thủ công một lần, không có Flyway. |
+| `schema.sql`, `seed_data.sql`, các Entity/Enum ban đầu và common config | Trưởng nhóm/foundation trước handoff | MO gửi PR/đề xuất khi phát sinh thay đổi; leader duyệt. Script schema chạy thủ công một lần, không có Flyway. |
 | `account/**`, `issue/**`, Auth `SecurityConfig` | M01 | Module khác gửi yêu cầu role/guard; không tự viết security riêng. |
 | `room/**`, RoomRepository/RoomCommand | M02 | M03/M04/M05/M06 qua Room Port. |
 | `application/**`, ApplicationRepository/Command | M03 | M04 gọi Application Port. |
@@ -601,17 +599,17 @@ Mỗi buổi họp ngắn hỏi đúng ba câu: (1) UC/ticket nào đã Local Do
 | E2E-10 | M04 + M02 | Admin tăng/giảm co-occupants | Không trùng CCCD trong Contract, không vượt capacity, không sửa sau ENDED. |
 | E2E-11 | M05 | Kỳ đầu 7 ngày, giá 2.000.000 VND | Tiền thuê `2,000,000*7/30` HALF_UP = **466.667 VND** rồi cộng điện nước. |
 | E2E-12 | M05 | Kỳ đầu >=14 ngày/kỳ sau | Tiền thuê bằng giá tháng Contract; không lấy giá Room đã đổi. |
-| E2E-13 | M05 | Billing cycle tạo lại do restart/login | Một cycle/item/nghĩa vụ, không reset tiền điện đã nhập hoặc nhân đôi Invoice. |
+| E2E-13 | M05 | Admin gửi yêu cầu phát hành cùng kỳ Contract nhiều lần | Một BillingPeriod/Invoice; kỳ đã xử lý không hiện lại. |
 | E2E-14 | M05/M01 | Admin còn điện nước chưa nhập đủ, một trường NULL và một trường 0 | Hard gate đúng; chỉ NULL tính là thiếu, 0 là dữ liệu đã nhập. |
 | E2E-15 | M05 | Tổng 0 và phát hành lỗi giữa chừng | NO_CHARGE không có Invoice 0; dữ liệu nhập không mất; retry an toàn. |
-| E2E-16 | M05 + Gateway | Tenant Invoice của mình UNPAID trước dueAt thanh toán thành công | PAID một lần; paymentMethod SANDBOX. |
+| E2E-16 | M05 + Gateway | Tenant Invoice của mình UNPAID trước dueAt thanh toán thành công | PAID một lần; paymentMethod BANK_TRANSFER. |
 | E2E-17 | M05 | Tenant khác/Invoice OVERDUE/now=dueAt bắt đầu sandbox | Server chặn; callback lặp không ghi PAID lần hai. |
 | E2E-18 | M06 + M05 | Admin xác nhận CASH/BANK_TRANSFER | M05 ghi PAID đúng method, không ghi lại khi đã PAID. |
 | E2E-19 | M06 + M05 | Quá dueAt 48h, Contract ENDED nhưng còn Invoice | OVERDUE; Admin vẫn tìm ra khoản nợ, không tự xóa nợ. |
-| E2E-20 | M05 + M06 | Gateway thành công muộn / callback mất / PAID đã có | Admin đối chiếu giao dịch xác minh; chưa PAID thì M05 có thể ghi SANDBOX, đã PAID không ghi đè. |
+| E2E-20 | M05 + M06 | Gateway thành công muộn / callback mất / PAID đã có | Admin đối chiếu giao dịch xác minh; chưa PAID thì M05 ghi BANK_TRANSFER, đã PAID không ghi đè. |
 | E2E-21 | M04 + M06 + M05 + M02 | Tenant rời sớm trong kỳ | M06 tính nguyên kỳ + điện nước, M05 phát hành Invoice/NO_CHARGE, Contract ENDED, Room AVAILABLE. |
 | E2E-22 | M02 + M04 + M06 + M05 | Admin ngừng cung cấp phòng ACTIVE | M06 tính rent theo ngày + điện nước, Contract ENDED, Room INACTIVE. |
-| E2E-23 | M04 + M05 + M06 | Tenant rời đúng ngày 10 sau kỳ đã ở | REGULAR kỳ cũ duy nhất; không EARLY_SETTLEMENT/kỳ mới 0 ngày. |
+| E2E-23 | M04 + M05 + M06 | Tenant rời đúng ranh giới kỳ cá nhân sau kỳ đã ở | REGULAR kỳ cũ duy nhất; không EARLY_SETTLEMENT/kỳ mới 0 ngày. |
 | E2E-24 | M04 + M05 + M02 | Scheduler sau khi quyết toán sớm | Không tạo trùng kỳ cuối, Room không bị giữ lại sai trạng thái. |
 | E2E-25 | M01 + M04 | User không có Contract ACTIVE cố tạo Issue; Issue cũ khi Contract ENDED | Tạo mới bị chặn; Issue cũ vẫn được Admin xử lý/Tenant xem lịch sử. |
 | E2E-26 | M06 + M01/M03/M05 | Notification gửi trùng event hoặc handler lỗi | Không trùng recipient-event; lỗi Notification không rollback Contract/Invoice. |
@@ -619,7 +617,7 @@ Mỗi buổi họp ngắn hỏi đúng ba câu: (1) UC/ticket nào đã Local Do
 
 **Tiêu chuẩn nghiệm thu một workflow cứng:** tests đạt cả **success + failure/rollback + sai quyền + chạy lại/idempotency hoặc concurrency** nếu có; dùng Port thật, SQL Server thật và các Entity/schema chuẩn. Unit test với mock không đủ để đánh dấu E2E_DONE.
 
-**Kiểm tra foundation trước E2E:** chạy `schema.sql` và `seed_admin.sql` một lần trên `RentalApartmentDev` của môi trường cần nghiệm thu; kiểm tra dữ liệu hợp lệ/sai cho PK, FK ghép, UNIQUE/filtered index, CHECK (đặc biệt `floor_number > 0`, giá tháng > 0, `area_m2` NULL hoặc > 0), email phân biệt hoa/thường, timestamp UTC và JPA `validate`. Không cần Docker, Testcontainers hoặc hạ tầng CI database riêng cho bước này. Tổng tiền kỳ bằng 0 vẫn phải theo NO_CHARGE dù giá tháng của Room/Contract > 0.
+**Kiểm tra foundation trước E2E:** chạy `schema.sql` và `seed_data.sql` một lần trên `RentalApartmentDev` của môi trường cần nghiệm thu; kiểm tra dữ liệu hợp lệ/sai cho PK, FK ghép, UNIQUE/filtered index, CHECK (đặc biệt `floor_number > 0`, giá tháng > 0, `area_m2` NULL hoặc > 0), email phân biệt hoa/thường, timestamp UTC và JPA `validate`. Không cần Docker, Testcontainers hoặc hạ tầng CI database riêng cho bước này. Tổng tiền kỳ bằng 0 vẫn phải theo NO_CHARGE dù giá tháng của Room/Contract > 0.
 
 ---
 
@@ -629,7 +627,7 @@ Mỗi người phải xác nhận:
 
 - [ ] Đọc mục module của mình; biết **chính xác UC, BR và trạng thái** cần bảo vệ.
 - [ ] Biết mình là Module Owner của bảng/Repository/Service nào và Workflow Owner của workflow nào.
-- [ ] Đã nhận `schema.sql`, `seed_admin.sql`, các Entity/Enum và biết schema đã được chạy trên `RentalApartmentDev` cục bộ với JPA `validate`; không tạo lại hoặc đổi schema âm thầm.
+- [ ] Đã nhận `schema.sql`, `seed_data.sql`, các Entity/Enum và biết schema đã được chạy trên `RentalApartmentDev` cục bộ với JPA `validate`; không tạo lại hoặc đổi schema âm thầm.
 - [ ] Có danh sách P0 làm ngay và P1 cần Port/mock, không ngồi chờ cả module người khác xong.
 - [ ] Biết mã Dependency Dxx của mình và người cần trao đổi ở đầu bên kia.
 - [ ] Hai bên đã chốt DTO/Port: input/output, status, exception, transaction và idempotency.
@@ -667,10 +665,10 @@ Các điểm sau là **quy ước tổ chức phát triển/kỹ thuật**, **kh
 
 1. **Hai lớp owner:** giữ Module Owner theo 10 bảng; nhóm xác nhận Workflow Owner của những luồng khác theo Bảng WF-01..WF-07 hoặc chỉ rõ điều chỉnh.
 2. **Đã chốt ownership WO termination:** M04 điều phối **một** TerminationWorkflow để cả UC34 và nhánh RENTED→INACTIVE của UC08 dùng chung. M06 chỉ sở hữu máy tính settlement, M05 chỉ issue Invoice và M02 chỉ update Room.
-3. **Xác nhận foundation thực sự đã có:** một `schema.sql` và một `seed_admin.sql` chạy thủ công một lần trên `RentalApartmentDev` cục bộ, toàn bộ 10 Entity/Enum/JPA relationship, kiểm tra constraint/index bằng dữ liệu mẫu hợp lệ/sai và JPA `validate` trước khi giao nhánh. Nếu chưa, dùng P0 thiết kế trước nhưng không tự đánh dấu hoàn tất DB. Không dùng Flyway.
+3. **Xác nhận foundation thực sự đã có:** một `schema.sql` và một `seed_data.sql` chạy thủ công một lần trên `RentalApartmentDev` cục bộ, toàn bộ 9 Entity/Enum/JPA relationship, kiểm tra constraint/index bằng dữ liệu mẫu hợp lệ/sai và JPA `validate` trước khi giao nhánh. Nếu chưa, dùng P0 thiết kế trước nhưng không tự đánh dấu hoàn tất DB. Không dùng Flyway.
 4. **Chốt giao tiếp tối thiểu:** CurrentUser/RoomQuery/RoomOccupancy, ApplicationQuery/Command, ContractCreate/ContractBilling/Activity, InvoiceQuery/Command, SettlementCalculator, NotificationEvent. Chốt error/transaction/idempotency, không cần chốt mọi chi tiết class ngay từ đầu.
-5. **Chốt một owner config chung:** M01 SecurityConfig và chỗ M05 yêu cầu Admin nhập điện nước; chủ dự án/một owner `schema.sql`, `seed_admin.sql`, `pom.xml`, layouts và CI. Không hai người tự sửa code chung độc lập.
-6. **Chốt dữ liệu/thiết bị demo còn mở:** cách lưu/upload ảnh phòng, cổng sandbox cụ thể, cách tạo Invoice/demo kỳ ngày 10. Giá thuê > 0, diện tích nullable > 0 khi có, tầng bắt buộc > 0 và không thêm thời hạn thuê tối thiểu đã được chốt; không đưa chúng trở lại danh sách chờ. Mọi quyết định nghiệp vụ mới phải sửa `BUSINESS_SPECIFICATION.md` trước; V2 chỉ cập nhật cách làm.
+5. **Chốt một owner config chung:** M01 SecurityConfig; M05 sở hữu lệnh Admin nhập điện nước/phát hành theo Contract; chủ dự án/một owner `schema.sql`, `seed_data.sql`, `pom.xml`, layouts và CI. Không hai người tự sửa code chung độc lập.
+6. **Chốt dữ liệu/thiết bị demo còn mở:** cách lưu/upload ảnh phòng, cổng sandbox cụ thể, dữ liệu demo các kỳ tính theo Contract. Giá thuê > 0, diện tích nullable > 0 khi có, tầng bắt buộc > 0 và không thêm thời hạn thuê tối thiểu đã được chốt; không đưa chúng trở lại danh sách chờ. Mọi quyết định nghiệp vụ mới phải sửa `BUSINESS_SPECIFICATION.md` trước; V2 chỉ cập nhật cách làm.
 
 ---
 

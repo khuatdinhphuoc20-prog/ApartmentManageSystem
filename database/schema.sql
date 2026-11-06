@@ -55,18 +55,6 @@ CREATE TABLE dbo.rooms (
  CONSTRAINT ck_rooms_required CHECK (LEN(LTRIM(RTRIM(room_code))) > 0 AND LEN(LTRIM(RTRIM(cover_image_path))) > 0)
 );
 
-CREATE TABLE dbo.billing_cycles (
- id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_billing_cycles PRIMARY KEY,
- collection_date DATE NOT NULL,
- status VARCHAR(20) NOT NULL,
- completed_at DATETIME2(3) NULL,
- created_at DATETIME2(3) NOT NULL,
- updated_at DATETIME2(3) NOT NULL,
- CONSTRAINT uq_billing_cycles_collection_date UNIQUE (collection_date),
- CONSTRAINT ck_billing_cycles_day CHECK (DAY(collection_date) = 10),
- CONSTRAINT ck_billing_cycles_status CHECK ((status = 'PENDING_INPUT' AND completed_at IS NULL) OR (status = 'COMPLETED' AND completed_at IS NOT NULL))
-);
-
 CREATE TABLE dbo.rental_applications (
  id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_rental_applications PRIMARY KEY,
  applicant_id BIGINT NOT NULL,
@@ -120,9 +108,9 @@ CREATE TABLE dbo.contracts (
  ),
  CONSTRAINT ck_contracts_settlement CHECK (
    (final_billing_period_end_date IS NULL AND final_settlement_result IS NULL AND settled_at IS NULL
-     AND (status <> 'ENDED' OR end_reason = 'NATURAL_EXPIRY' OR (end_reason = 'TENANT_EARLY_EXIT' AND DAY(effective_end_date) = 10)))
+     AND (status <> 'ENDED' OR end_reason IN ('NATURAL_EXPIRY','TENANT_EARLY_EXIT')))
    OR (status = 'ENDED' AND end_reason IN ('TENANT_EARLY_EXIT','ADMIN_STOP_SERVICE')
-     AND final_billing_period_end_date IS NOT NULL AND DAY(final_billing_period_end_date) = 10
+     AND final_billing_period_end_date IS NOT NULL
      AND final_settlement_result IS NOT NULL AND settled_at IS NOT NULL)
  )
 );
@@ -141,27 +129,27 @@ CREATE TABLE dbo.contract_co_occupants (
  CONSTRAINT ck_contract_co_occupants_required CHECK (LEN(LTRIM(RTRIM(full_name))) > 0 AND LEN(LTRIM(RTRIM(identity_document_no))) > 0)
 );
 
-CREATE TABLE dbo.billing_cycle_items (
- id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_billing_cycle_items PRIMARY KEY,
- billing_cycle_id BIGINT NOT NULL,
+CREATE TABLE dbo.billing_periods (
+ id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_billing_periods PRIMARY KEY,
  contract_id BIGINT NOT NULL,
  usage_from DATE NOT NULL,
  usage_to DATE NOT NULL,
+ billing_period_end_date DATE NOT NULL,
  electricity_amount DECIMAL(19,0) NULL,
  water_amount DECIMAL(19,0) NULL,
  input_completed_at DATETIME2(3) NULL,
  entered_by_user_id BIGINT NULL,
  rent_amount DECIMAL(19,0) NULL,
- processing_result VARCHAR(16) NOT NULL CONSTRAINT df_billing_cycle_items_result DEFAULT 'PENDING',
+ processing_result VARCHAR(16) NOT NULL CONSTRAINT df_billing_periods_result DEFAULT 'PENDING',
  processed_at DATETIME2(3) NULL,
  created_at DATETIME2(3) NOT NULL,
  updated_at DATETIME2(3) NOT NULL,
- CONSTRAINT uq_billing_cycle_items_cycle_contract UNIQUE (billing_cycle_id,contract_id),
- CONSTRAINT uq_billing_cycle_items_id_contract UNIQUE (id,contract_id),
- CONSTRAINT ck_billing_cycle_items_usage CHECK (usage_from <= usage_to),
- CONSTRAINT ck_billing_cycle_items_amounts CHECK ((electricity_amount IS NULL OR electricity_amount >= 0) AND (water_amount IS NULL OR water_amount >= 0) AND (rent_amount IS NULL OR rent_amount >= 0)),
- CONSTRAINT ck_billing_cycle_items_input CHECK (input_completed_at IS NULL OR (electricity_amount IS NOT NULL AND water_amount IS NOT NULL AND entered_by_user_id IS NOT NULL)),
- CONSTRAINT ck_billing_cycle_items_result CHECK (
+ CONSTRAINT uq_billing_periods_contract_end UNIQUE (contract_id,billing_period_end_date),
+ CONSTRAINT uq_billing_periods_id_contract UNIQUE (id,contract_id),
+ CONSTRAINT ck_billing_periods_usage CHECK (usage_from <= usage_to AND usage_to <= billing_period_end_date),
+ CONSTRAINT ck_billing_periods_amounts CHECK ((electricity_amount IS NULL OR electricity_amount >= 0) AND (water_amount IS NULL OR water_amount >= 0) AND (rent_amount IS NULL OR rent_amount >= 0)),
+ CONSTRAINT ck_billing_periods_input CHECK (input_completed_at IS NULL OR (electricity_amount IS NOT NULL AND water_amount IS NOT NULL AND entered_by_user_id IS NOT NULL)),
+ CONSTRAINT ck_billing_periods_result CHECK (
    (processing_result = 'PENDING' AND rent_amount IS NULL AND processed_at IS NULL)
    OR (processing_result = 'INVOICED' AND rent_amount IS NOT NULL AND electricity_amount IS NOT NULL AND water_amount IS NOT NULL AND input_completed_at IS NOT NULL AND processed_at IS NOT NULL AND rent_amount + electricity_amount + water_amount > 0)
    OR (processing_result = 'NO_CHARGE' AND rent_amount IS NOT NULL AND electricity_amount IS NOT NULL AND water_amount IS NOT NULL AND rent_amount = 0 AND electricity_amount = 0 AND water_amount = 0 AND input_completed_at IS NOT NULL AND processed_at IS NOT NULL)
@@ -171,7 +159,7 @@ CREATE TABLE dbo.billing_cycle_items (
 CREATE TABLE dbo.invoices (
  id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_invoices PRIMARY KEY,
  contract_id BIGINT NOT NULL,
- billing_cycle_item_id BIGINT NULL,
+ billing_period_id BIGINT NULL,
  billing_period_end_date DATE NOT NULL,
  invoice_kind VARCHAR(24) NOT NULL,
  usage_from DATE NOT NULL,
@@ -193,20 +181,20 @@ CREATE TABLE dbo.invoices (
  created_at DATETIME2(3) NOT NULL,
  updated_at DATETIME2(3) NOT NULL,
  CONSTRAINT uq_invoices_contract_period UNIQUE (contract_id,billing_period_end_date),
- CONSTRAINT ck_invoices_period CHECK (DAY(billing_period_end_date) = 10 AND usage_from <= usage_to AND usage_to <= billing_period_end_date),
+ CONSTRAINT ck_invoices_period CHECK (usage_from <= usage_to AND usage_to <= billing_period_end_date),
  CONSTRAINT ck_invoices_money CHECK (monthly_rent_snapshot > 0 AND rent_amount >= 0 AND electricity_amount >= 0 AND water_amount >= 0 AND total_amount = rent_amount + electricity_amount + water_amount AND total_amount > 0),
  CONSTRAINT ck_invoices_kind_rule CHECK (
-   (invoice_kind = 'REGULAR' AND billing_cycle_item_id IS NOT NULL AND ((rent_calculation_rule = 'FIRST_PRORATED' AND prorated_days IS NOT NULL AND prorated_days BETWEEN 1 AND 13) OR (rent_calculation_rule = 'MONTHLY_FULL' AND prorated_days IS NULL)))
+   (invoice_kind = 'REGULAR' AND billing_period_id IS NOT NULL AND ((rent_calculation_rule IN ('FIRST_PRORATED','PERIOD_PRORATED') AND prorated_days IS NOT NULL AND prorated_days BETWEEN 1 AND 13) OR (rent_calculation_rule = 'MONTHLY_FULL' AND prorated_days IS NULL)))
    OR (invoice_kind = 'EARLY_SETTLEMENT' AND ((rent_calculation_rule = 'TENANT_EARLY_FULL' AND prorated_days IS NULL) OR (rent_calculation_rule = 'ADMIN_STOP_PRORATED' AND prorated_days IS NOT NULL AND prorated_days >= 0)))
  ),
  CONSTRAINT ck_invoices_due CHECK (due_at = DATEADD(HOUR,48,issued_at)),
  CONSTRAINT ck_invoices_payment CHECK (
    (status IN ('UNPAID','OVERDUE') AND paid_at IS NULL AND payment_method IS NULL AND payment_reference IS NULL AND confirmed_by_user_id IS NULL)
-   OR (status = 'PAID' AND paid_at IS NOT NULL AND payment_method IS NOT NULL AND payment_method IN ('SANDBOX','CASH','BANK_TRANSFER')
-       AND (payment_method = 'SANDBOX' OR confirmed_by_user_id IS NOT NULL))
+   OR (status = 'PAID' AND paid_at IS NOT NULL AND payment_method IS NOT NULL AND payment_method IN ('CASH','BANK_TRANSFER')
+       AND (confirmed_by_user_id IS NOT NULL OR (payment_method = 'BANK_TRANSFER' AND payment_reference IS NOT NULL)))
  )
 );
-CREATE UNIQUE INDEX ux_invoices_cycle_item ON dbo.invoices(billing_cycle_item_id) WHERE billing_cycle_item_id IS NOT NULL;
+CREATE UNIQUE INDEX ux_invoices_billing_period ON dbo.invoices(billing_period_id) WHERE billing_period_id IS NOT NULL;
 
 CREATE TABLE dbo.issues (
  id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT pk_issues PRIMARY KEY,
@@ -268,13 +256,12 @@ ALTER TABLE dbo.contracts ADD
  CONSTRAINT fk_contracts_created_by FOREIGN KEY (created_by_user_id) REFERENCES dbo.users(id),
  CONSTRAINT fk_contracts_closed_by FOREIGN KEY (closed_by_user_id) REFERENCES dbo.users(id);
 ALTER TABLE dbo.contract_co_occupants ADD CONSTRAINT fk_contract_co_occupants_contract FOREIGN KEY (contract_id) REFERENCES dbo.contracts(id);
-ALTER TABLE dbo.billing_cycle_items ADD
- CONSTRAINT fk_billing_cycle_items_cycle FOREIGN KEY (billing_cycle_id) REFERENCES dbo.billing_cycles(id),
- CONSTRAINT fk_billing_cycle_items_contract FOREIGN KEY (contract_id) REFERENCES dbo.contracts(id),
- CONSTRAINT fk_billing_cycle_items_entered_by FOREIGN KEY (entered_by_user_id) REFERENCES dbo.users(id);
+ALTER TABLE dbo.billing_periods ADD
+ CONSTRAINT fk_billing_periods_contract FOREIGN KEY (contract_id) REFERENCES dbo.contracts(id),
+ CONSTRAINT fk_billing_periods_entered_by FOREIGN KEY (entered_by_user_id) REFERENCES dbo.users(id);
 ALTER TABLE dbo.invoices ADD
  CONSTRAINT fk_invoices_contract FOREIGN KEY (contract_id) REFERENCES dbo.contracts(id),
- CONSTRAINT fk_invoices_cycle_item_contract FOREIGN KEY (billing_cycle_item_id,contract_id) REFERENCES dbo.billing_cycle_items(id,contract_id),
+ CONSTRAINT fk_invoices_billing_period_contract FOREIGN KEY (billing_period_id,contract_id) REFERENCES dbo.billing_periods(id,contract_id),
  CONSTRAINT fk_invoices_confirmed_by FOREIGN KEY (confirmed_by_user_id) REFERENCES dbo.users(id);
 ALTER TABLE dbo.issues ADD
  CONSTRAINT fk_issues_contract FOREIGN KEY (contract_id) REFERENCES dbo.contracts(id),
@@ -298,7 +285,7 @@ CREATE INDEX ix_invoices_due ON dbo.invoices(status,due_at);
 CREATE INDEX ix_invoices_history ON dbo.invoices(contract_id,issued_at);
 CREATE INDEX ix_issues_reporter ON dbo.issues(reporter_id,created_at);
 CREATE INDEX ix_notifications_recipient_status ON dbo.notifications(recipient_user_id,status,created_at);
-CREATE INDEX ix_billing_cycles_status ON dbo.billing_cycles(status,collection_date);
+CREATE INDEX ix_billing_periods_contract_end ON dbo.billing_periods(contract_id,billing_period_end_date);
 
 COMMIT TRANSACTION;
 

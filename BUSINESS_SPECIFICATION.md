@@ -35,7 +35,7 @@ Khách có thể xem phòng còn cho thuê, tự tạo tài khoản và đăng k
 | Người đại diện | Chỉ người đứng tên hợp đồng có tài khoản và quyền thanh toán cho phòng |
 | Cho thuê | Có luồng đăng ký online và luồng Admin tạo hợp đồng trực tiếp |
 | Hợp đồng | Một phòng chỉ có một hợp đồng còn hiệu lực/được đặt trước tại một thời điểm; một người có thể đứng tên nhiều hợp đồng cho nhiều phòng |
-| Thu tiền | Theo phòng, thu sau thời gian sử dụng, ngày 10 dương lịch hằng tháng |
+| Thu tiền | Theo từng hợp đồng, sau thời gian sử dụng; kỳ cá nhân neo theo ngày bắt đầu thuê, Admin phát hành riêng từng hợp đồng |
 | Điện nước | Quản lý khoản tiền điện và nước riêng theo từng phòng, Admin nhập số tiền thực tế |
 | Thanh toán | Sandbox online hoặc Admin ghi nhận khoản đã thu ngoài hệ thống |
 | Dashboard Admin | Đếm Room theo trạng thái; cộng totalAmount của Invoice PAID; đếm Invoice UNPAID/OVERDUE và Issue chưa RESOLVED từ bảng hiện có, không tạo Entity/module mới |
@@ -64,7 +64,7 @@ Khách có thể xem phòng còn cho thuê, tự tạo tài khoản và đăng k
 | **Guest** | Khách chưa đăng nhập | Xem phòng AVAILABLE, tìm kiếm, xem chi tiết, đăng ký tài khoản |
 | **User / Tenant Representative** | Người dùng đã đăng ký; khi có hợp đồng là người đại diện thuê | Gửi/rút/theo dõi đơn; xem hợp đồng, hóa đơn; thanh toán; xem lịch sử; tạo/theo dõi Issue; xem thông báo |
 | **Admin / Landlord** | Một chủ trọ duy nhất | Quản lý phòng, xét duyệt đơn, tạo/kết thúc hợp đồng, quản lý người ở cùng, nhập điện nước, ghi nhận thu tiền thực tế, xử lý Issue và gửi thông báo |
-| **Scheduler / System** | Tác nhân tự động, không phải tài khoản người thật | Kích hoạt/kết thúc hợp đồng theo ngày; tạo/kiểm tra kỳ thu; kiểm tra hóa đơn quá hạn; sinh sự kiện và thông báo hệ thống |
+| **Scheduler / System** | Tác nhân tự động, không phải tài khoản người thật | Kích hoạt/kết thúc hợp đồng theo ngày; kiểm tra hóa đơn quá hạn; sinh sự kiện và thông báo hệ thống |
 | **Sandbox Payment Gateway** | Hệ thống thanh toán ngoài ứng dụng | Tiếp nhận yêu cầu thanh toán và cung cấp kết quả để hệ thống xác minh |
 
 **Không phải actor:** Người ở cùng không đứng tên. Họ chỉ là thông tin đi kèm do Admin quản lý; không đăng nhập, không gửi đơn và không được thanh toán hóa đơn qua tài khoản riêng.
@@ -89,8 +89,7 @@ Ví dụ:
 | **RentalApplication** | Đơn đề nghị thuê một phòng | Một đơn cho một phòng; duyệt thành công phải tạo được hợp đồng |
 | **Contract** | Thỏa thuận thuê phòng có thời hạn | Một đại diện, một phòng, giá thuê đã chốt, ngày bắt đầu và ngày kết thúc |
 | **Co-occupant information** | Danh sách người ở cùng (họ tên, CCCD…) | Chỉ Admin chỉnh sửa; không có tài khoản/quyền thanh toán/lịch sử thời gian riêng |
-| **BillingCycle** | Một kỳ thu tiền định kỳ ngày 10 | Điều phối danh sách phòng/hợp đồng cần thu và việc nhập đủ điện nước |
-| **BillingCycleItem** | Một nghĩa vụ của Contract trong kỳ, kèm dữ liệu chuẩn bị | Giữ điện nước đã nhập, phân biệt PENDING với INVOICED/NO_CHARGE; không phải hóa đơn chưa trả |
+| **BillingPeriod** | Một kỳ thu riêng của Contract tính từ ngày bắt đầu thuê | Giữ khoảng sử dụng, điện nước và kết quả PENDING/INVOICED/NO_CHARGE; không phải hóa đơn chưa trả |
 | **Invoice** | Khoản phải thu của một hợp đồng/phòng trong kỳ hoặc quyết toán | Gồm tiền thuê, điện, nước, tổng tiền, trạng thái thanh toán; đồng thời là căn cứ lịch sử thanh toán |
 | **Issue** | Yêu cầu sửa chữa/phản ánh của người thuê | Gắn với người thuê và phòng/hợp đồng; Admin xử lý |
 | **Notification** | Thông báo đến người dùng | Admin gửi thông báo thủ công; hệ thống phát sinh thông báo tự động; người nhận có trạng thái đọc |
@@ -174,14 +173,14 @@ Không áp thêm thời hạn thuê tối thiểu ngoài điều kiện `planned
 
 | ID | Quy tắc |
 |---|---|
-| BR-BILL-01 | Thu tiền thuê **sau thời gian sử dụng**, vào **ngày 10 dương lịch hằng tháng**. Kỳ thu dựa trên chu kỳ ngày 10 (cycle10). |
-| BR-BILL-02 | Kỳ thông thường là [ngày 10 kỳ trước, ngày 10 kỳ tiếp theo): tính ngày đầu, không tính ngày cuối. Ngày nghiệp vụ theo UTC+7; timestamp lưu UTC. Trả phòng đúng ngày 10 không phát sinh tiền thuê kỳ mới. |
-| BR-BILL-03 | Với **kỳ đầu tiên dưới 14 ngày sử dụng**, tiền thuê = giá thuê tháng / 30 × số ngày đã ở. Từ 14 ngày trở lên thì áp dụng giá thuê tháng đầy đủ. |
-| BR-BILL-04 | Sau kỳ đầu tiên, tiền thuê định kỳ sử dụng giá thuê tháng của hợp đồng; cộng tiền điện và nước của phòng. |
+| BR-BILL-01 | Thu tiền thuê **sau thời gian sử dụng**. Mỗi Contract có kỳ riêng neo theo `start_date`; Admin chủ động phát hành riêng từng kỳ đã kết thúc, không có ngày phát hành chung toàn tòa nhà. |
+| BR-BILL-02 | Kỳ đầu bắt đầu tại `start_date`; các kỳ tiếp theo dùng cùng ngày hàng tháng. Ngày 29–31 được chốt vào ngày cuối tháng nếu thiếu ngày tương ứng; kỳ sau quay lại ngày neo gốc. Khoảng dùng [from, to): tính ngày đầu, không tính ngày cuối. Ngày nghiệp vụ theo UTC+7; timestamp lưu UTC. |
+| BR-BILL-03 | Kỳ REGULAR dưới 14 ngày (kỳ đầu ngắn hoặc kỳ cuối bị rút ngắn) tính tiền thuê = giá thuê tháng / 30 × số ngày sử dụng, làm tròn HALF_UP đến đồng. Từ 14 ngày trở lên áp dụng giá thuê tháng đầy đủ. |
+| BR-BILL-04 | Kỳ REGULAR từ 14 ngày trở lên dùng giá thuê tháng của hợp đồng; cộng tiền điện và nước do Admin nhập cho hợp đồng đó. |
 | BR-BILL-05 | Admin tính điện nước bên ngoài rồi nhập số tiền cuối cùng. Nếu phòng đổi hợp đồng trong kỳ, Admin chốt riêng tiền của từng hợp đồng; hệ thống không lưu công tơ và không tự chia theo số ngày. |
-| BR-BILL-06 | Đến kỳ thu, hệ thống tạo/kiểm tra kỳ và yêu cầu Admin nhập đủ điện nước cho **toàn bộ phòng thuộc kỳ**. Khi Admin đăng nhập còn kỳ chưa hoàn thành, giao diện phải khóa chặt vào bước nhập bắt buộc trước khi vào các chức năng thông thường. |
-| BR-BILL-07 | Sau khi nhập đủ, hệ thống tính tiền thuê, cộng điện nước, phát hành Invoice UNPAID cho khoản tổng lớn hơn 0 và thông báo người thuê. Tổng bằng 0 được ghi nhận NO_CHARGE, không phát hành Invoice. |
-| BR-BILL-08 | Không tạo trùng BillingCycle/Invoice nếu Scheduler chạy lại, server khởi động lại hoặc Admin đăng nhập nhiều lần. |
+| BR-BILL-06 | Admin xử lý từng Contract độc lập sau khi kỳ sử dụng đã kết thúc: nhập đủ tiền điện nước và phát hành hóa đơn trong cùng thao tác. Kỳ của phòng khác không chặn thao tác này. |
+| BR-BILL-07 | M05 tính tiền thuê, cộng điện nước, phát hành Invoice UNPAID nếu tổng > 0 và thông báo người thuê. Tổng bằng 0 được ghi nhận NO_CHARGE, không phát hành Invoice. |
+| BR-BILL-08 | Không tạo trùng BillingPeriod/Invoice khi Admin thao tác lại, server khởi động lại hoặc yêu cầu đồng thời. Khóa duy nhất theo Contract + ngày kết thúc kỳ bảo vệ tính duy nhất. |
 | BR-BILL-09 | Một Invoice thu toàn bộ số tiền của nó; không cho thanh toán một phần hoặc chia đợt. |
 | BR-BILL-10 | Chỉ người đại diện được bắt đầu sandbox; Invoice phải tồn tại, đúng chủ, UNPAID và thời điểm hiện tại phải trước dueAt. Không chỉ dựa vào Scheduler đổi status để chặn quá hạn. |
 | BR-BILL-11 | dueAt = issuedAt + đúng 48 giờ. Từ dueAt mà chưa trả, Invoice chuyển OVERDUE; xử lý trực tiếp với Admin, không mở sandbox thông thường. Notification chậm/retry không dịch dueAt. |
@@ -195,22 +194,23 @@ Không áp thêm thời hạn thuê tối thiểu ngoài điều kiện `planned
 | BR-BILL-19 | Admin xem lại/sửa điện nước trước phát hành. Sau phát hành không sửa tiền Invoice; sai sót giải quyết trực tiếp, giữ nguyên số tiền trên hệ thống. Trạng thái vẫn cập nhật theo nghiệp vụ thanh toán. |
 | BR-BILL-20 | PAID vẫn nghĩa là nhận đủ số tiền trên Invoice. Nếu thỏa thuận ngoài đời khác số tiền này, hệ thống không tự đánh dấu PAID/xóa nợ; công nợ trên hệ thống có thể khác thỏa thuận. Đây là giới hạn bản đầu. |
 | BR-BILL-21 | Callback lặp không tạo hiệu ứng lần hai. Callback thành công muộn khi Invoice đã OVERDUE, hoặc xung đột với khoản đã xác nhận, được xác minh để Admin đối chiếu qua nguồn gateway/log vận hành; không tự ghi đè PAID hoặc mở ngoại lệ OVERDUE → PAID qua callback. Không coi kết quả thành công muộn là thất bại rồi bỏ dấu giao dịch. |
-| BR-BILL-22 | Chỉ một paymentMethod: SANDBOX, CASH hoặc BANK_TRANSFER (chuyển khoản trực tiếp Admin xác nhận). Lưu tham chiếu thành công nếu có; không lưu mọi lần thử sandbox. |
-| BR-BILL-23 | Khi gateway xác nhận đã thu đủ nhưng callback trễ/thất lạc hoặc xung đột Invoice, Admin được xem và đối chiếu giao dịch đã xác minh. Nếu Invoice chưa PAID, M05 được ghi nhận PAID đúng nguồn SANDBOX theo xác nhận của Admin; nếu đã PAID, không ghi đè dữ liệu cũ. Hai khoản tiền thực tế được xử lý ngoài hệ thống. Không tạo Payment/PaymentAttempt hoặc lịch sử mọi lần thử. |
+| BR-BILL-22 | Với dữ liệu thanh toán mới, chỉ dùng paymentMethod CASH hoặc BANK_TRANSFER; giao dịch VNPAY thành công được ghi theo BANK_TRANSFER. Giữ SANDBOX chỉ để đọc dữ liệu lịch sử, không ghi SANDBOX cho Invoice mới. Lưu tham chiếu thành công nếu có; không lưu mọi lần thử. |
+| BR-BILL-23 | Khi gateway xác nhận đã thu đủ nhưng callback trễ/thất lạc hoặc xung đột Invoice, Admin được xem và đối chiếu giao dịch đã xác minh. Nếu Invoice chưa PAID, M05 ghi nhận PAID với paymentMethod BANK_TRANSFER sau xác nhận của Admin; nếu đã PAID, không ghi đè dữ liệu cũ. Hai khoản tiền thực tế được xử lý ngoài hệ thống. Không tạo Payment/PaymentAttempt hoặc lịch sử mọi lần thử. |
+| BR-BILL-24 | Tenant đại diện có thể gửi yêu cầu thanh toán tiền mặt cho Invoice UNPAID/OVERDUE của mình để Admin biết và liên hệ. Yêu cầu không tự ghi `payment_method=CASH` hoặc PAID; Admin chỉ xác nhận CASH sau khi nhận đủ tiền. Yêu cầu lặp cho cùng Invoice không tạo thông báo trùng. |
 
 ### 4.6. Kết thúc hợp đồng và quyết toán
 
 | ID | Quy tắc |
 |---|---|
-| BR-TERM-01 | Nếu **Tenant chủ động trả phòng trước hạn** trong kỳ đang sử dụng, tiền thuê kỳ đó **thu nguyên kỳ**, cộng tiền điện nước thực tế đã chốt; trường hợp đúng ranh giới ngày 10 áp dụng ngoại lệ BR-TERM-09. |
+| BR-TERM-01 | Nếu **Tenant chủ động trả phòng trước hạn** giữa kỳ đang sử dụng, tiền thuê kỳ đó **thu nguyên kỳ**, cộng tiền điện nước thực tế đã chốt; nếu kết thúc đúng ranh giới kỳ cá nhân áp dụng ngoại lệ BR-TERM-09. |
 | BR-TERM-02 | Nếu **Admin chủ động ngừng cung cấp phòng** và kết thúc ACTIVE, tiền thuê kỳ cuối = giá thuê tháng / 30 × số ngày thực tế sử dụng trong kỳ, cộng tiền điện nước thực tế. Quy tắc này được ưu tiên so với công thức nguyên kỳ. |
 | BR-TERM-03 | Nếu hủy SCHEDULED trước ngày bắt đầu, không có tiền thuê đã phát sinh nên không tạo hóa đơn tiền thuê kỳ cuối. |
-| BR-TERM-04 | Kết thúc sớm phải quyết toán ngay: phát hành Invoice nếu tổng > 0, ghi NO_CHARGE nếu tổng = 0; không đợi kỳ thu sau để tạo thêm khoản trùng. Ngoại lệ Tenant trả đúng ngày 10 tại BR-TERM-09 do kỳ thu REGULAR vừa kết thúc xử lý, có thể phát hành sau khi Contract ENDED nếu điện nước chưa chốt. |
+| BR-TERM-04 | Kết thúc sớm giữa kỳ phải quyết toán ngay: phát hành Invoice nếu tổng > 0, ghi NO_CHARGE nếu tổng = 0; không đợi kỳ thu sau để tạo thêm khoản trùng. Ngoại lệ Tenant trả đúng ranh giới kỳ tại BR-TERM-09 do kỳ REGULAR vừa kết thúc xử lý, có thể phát hành sau khi Contract ENDED nếu điện nước chưa chốt. |
 | BR-TERM-05 | Do hệ thống thu tiền sau khi ở, không có tình huống hoàn lại tiền thuê trả trước cho kỳ đang sử dụng; trọng tâm là **thu đủ khoản kỳ cuối**. |
 | BR-TERM-06 | Hợp đồng có thể ENDED và phòng có thể AVAILABLE/INACTIVE dù Invoice quyết toán còn UNPAID/OVERDUE; khoản phải thu tiếp tục tồn tại để Admin theo dõi. |
 | BR-TERM-07 | Hết hạn tự nhiên đúng lịch đã chọn không bị xem là Tenant chủ động kết thúc sớm; áp dụng xử lý kết thúc bình thường và kỳ thu phù hợp. |
-| BR-TERM-08 | Không tính ngày trả phòng. Khoảng 0 ngày không tự miễn chính sách nguyên kỳ nếu Tenant bắt đầu thuê rồi trả sớm **trong cùng kỳ**; ngoại lệ ngày 10 sau kỳ đã sử dụng theo BR-TERM-09. Admin ngừng cung cấp tính ngày thực tế, cộng điện nước. Tổng thực sự bằng 0 thì không tạo Invoice nhưng phải ghi kết quả quyết toán để chạy lại an toàn. |
-| BR-TERM-09 | **Ngoại lệ tại ranh giới kỳ:** Tenant chủ động kết thúc trước `planned_end_date` đúng ngày 10, sau khi đã sử dụng kỳ vừa kết thúc nhưng chưa dùng ngày nào của kỳ mới, không phát sinh tiền thuê kỳ mới. Kỳ vừa kết thúc do xử lý REGULAR tương ứng (Invoice nếu tổng > 0, NO_CHARGE nếu tổng = 0), kể cả khi Invoice đã phát hành. Không tính lại theo quy tắc nguyên kỳ, không sửa Invoice đã phát hành, không tạo Invoice EARLY_SETTLEMENT thứ hai cùng Contract/mốc kỳ. Điện nước kỳ cũ phải được nhập/chốt và tính đúng một lần trước phát hành; nếu phát hiện sai sót sau phát hành, áp dụng BR-BILL-19/20. |
+| BR-TERM-08 | Không tính ngày trả phòng. Khoảng 0 ngày không tự miễn chính sách nguyên kỳ nếu Tenant bắt đầu thuê rồi trả sớm **trong cùng kỳ**; ngoại lệ ranh giới kỳ cá nhân theo BR-TERM-09. Admin ngừng cung cấp tính ngày thực tế, cộng điện nước. Tổng thực sự bằng 0 thì không tạo Invoice nhưng phải ghi kết quả quyết toán để chạy lại an toàn. |
+| BR-TERM-09 | **Ngoại lệ tại ranh giới kỳ cá nhân:** Tenant chủ động kết thúc trước `planned_end_date` đúng ngày kết thúc của một kỳ cá nhân, sau khi đã sử dụng kỳ vừa kết thúc nhưng chưa dùng ngày nào của kỳ mới, không phát sinh tiền thuê kỳ mới. Kỳ vừa kết thúc do xử lý REGULAR tương ứng (Invoice nếu tổng > 0, NO_CHARGE nếu tổng = 0), kể cả khi Invoice đã phát hành. Không tính lại theo quy tắc nguyên kỳ, không sửa Invoice đã phát hành, không tạo Invoice EARLY_SETTLEMENT thứ hai cùng Contract/mốc kỳ. Điện nước kỳ cũ phải được nhập/chốt đúng một lần trước phát hành; nếu phát hiện sai sót sau phát hành, áp dụng BR-BILL-19/20. | 
 
 ### 4.7. Issue và Notification
 
@@ -269,11 +269,11 @@ Lý do kết thúc sớm (**TENANT_EARLY_EXIT**, **ADMIN_STOP_SERVICE**) là th�
 | OVERDUE | Chưa thanh toán sau hạn; làm việc trực tiếp với Admin | → PAID khi Admin xác nhận thu tiền thực tế |
 | PAID | Đã ghi nhận thanh toán toàn bộ | Trạng thái kết thúc thông thường |
 
-Thiết kế 1.0 không lưu Invoice DRAFT: dữ liệu chuẩn bị nằm ở BillingCycleItem; khi đủ điều kiện và tổng lớn hơn 0 thì tạo Invoice UNPAID.
+Không lưu Invoice DRAFT. Dữ liệu tính tiền và kết quả xử lý nằm ở BillingPeriod; khi đủ điều kiện và tổng lớn hơn 0 thì tạo Invoice UNPAID. Admin nhập điện nước và phát hành một hợp đồng trong cùng thao tác; không cần đủ dữ liệu các phòng khác.
 
-### 5.5. BillingCycle, Issue và Notification
+### 5.5. BillingPeriod, Issue và Notification
 
-- **BillingCycle:** PENDING_INPUT → COMPLETED khi mọi nghĩa vụ có Invoice hoặc kết quả NO_CHARGE. COMPLETED không có nghĩa đã thu hết tiền. BillingCycleItem lưu dữ liệu nhập và kết quả PENDING / INVOICED / NO_CHARGE; phát hành lỗi giữ dữ liệu nhập để thử lại an toàn.
+- **BillingPeriod:** PENDING → INVOICED / NO_CHARGE theo từng Contract. Mỗi kỳ được phát hành riêng, không tạo chu kỳ chung hoặc chặn giao diện Admin. Admin nhập điện nước và phát hành cùng thao tác; BillingPeriod lưu kết quả đã xử lý và ngăn phát hành trùng.
 - **Issue:** OPEN → IN_PROGRESS → RESOLVED; Admin xử lý, người thuê theo dõi.
 - **Notification:** UNREAD → READ, theo từng người nhận.
 
@@ -310,16 +310,15 @@ Thiết kế 1.0 không lưu Invoice DRAFT: dữ liệu chuẩn bị nằm ở B
 3. Room được giải phóng về AVAILABLE theo quy tắc kết thúc thông thường. Không gia hạn hay sửa ngày kết thúc của Contract cũ; việc thuê tiếp là lần thuê mới theo điều kiện tạo mới.
 4. Các khoản tiền chưa thu vẫn nằm trong Invoice và được theo dõi độc lập; kỳ thu cuối phải được xử lý mà không bỏ sót.
 
-### WF-04. Tạo kỳ thu và phát hành Invoice
+### WF-04. Admin phát hành hóa đơn theo từng Contract
 
-1. Đến ngày 10, Scheduler kiểm tra/tạo BillingCycle **một lần theo khóa kỳ**, kể cả khi thực thi lại.
-2. Xác định các hợp đồng/phòng phải thu tiền của kỳ.
-3. Admin đăng nhập gặp biểu mẫu nhập số tiền điện, nước **cho toàn bộ phòng cần thu**; chưa hoàn thành thì không đi tiếp đến giao diện quản trị thông thường.
-4. Khi biểu mẫu hoàn tất, hệ thống áp dụng công thức tiền thuê (đặc biệt kỳ đầu dưới 14 ngày), cộng tiền điện và nước theo phòng.
-5. Phát hành Invoice UNPAID đúng một lần cho nghĩa vụ tổng lớn hơn 0; tổng 0 ghi NO_CHARGE. Lưu điện nước trước bằng giao dịch riêng; giao dịch phát hành cập nhật Invoice/kết quả từng dòng và trạng thái kỳ nhất quán.
-6. Gửi Notification tới người đại diện của hợp đồng.
+1. Hệ thống tính kỳ tiếp theo từ `start_date` và ngày kết thúc BillingPeriod gần nhất. Ngày 29–31 được giới hạn vào ngày cuối tháng ngắn hơn, rồi dùng lại ngày neo gốc ở các tháng sau.
+2. Khi kỳ đã kết thúc, Admin thấy riêng phòng/hợp đồng đó trong danh sách đến hạn. Không có bước tạo kỳ chung hoặc khóa màn hình chờ các phòng khác.
+3. Admin nhập tiền điện và nước cuối cùng cho đúng Contract rồi bấm phát hành.
+4. M05 tính tiền thuê (kỳ REGULAR dưới 14 ngày được prorate), cộng điện nước, ghi BillingPeriod. Tổng > 0 tạo Invoice UNPAID với dueAt sau 48 giờ; tổng 0 lưu NO_CHARGE.
+5. Giao dịch phát hành khóa kỳ của Contract, lưu kết quả đúng một lần và phát sự kiện thông báo sau commit.
 
-**Ví dụ minh họa:** Giá hợp đồng 3.000.000đ/tháng, bắt đầu 01/11, kỳ đầu [01/11, 10/11) có 9 ngày: tiền thuê 3.000.000 / 30 × 9 = 900.000đ, cộng điện nước. Đây là quy ước biên ngày đã chốt.
+**Ví dụ:** Contract bắt đầu ngày 18/10 có kỳ đầu `[18/10, 18/11)`. Sau ngày 18/11, Admin nhập điện nước và phát hành hóa đơn riêng cho hợp đồng đó. Contract bắt đầu ngày 31/01 có kỳ kế tiếp đến ngày cuối tháng 2; kỳ sau đó quay lại ngày 31/03.
 
 ### WF-05. Thanh toán sandbox
 
@@ -329,7 +328,7 @@ Thiết kế 1.0 không lưu Invoice DRAFT: dữ liệu chuẩn bị nằm ở B
 4. Gateway phản hồi; M05 xác minh tính hợp lệ, mã hóa đơn, số tiền và kết quả.
 5. Thành công: Invoice → PAID, lưu thời điểm/phương thức/tham chiếu tối thiểu. Thất bại: giữ UNPAID nếu còn trong hạn, cho phép thử lại.
 6. Callback lặp không được ghi nhận lại khoản đã PAID.
-7. Khi callback thành công trễ/thất lạc hoặc xung đột, Admin đối chiếu giao dịch đã xác minh theo BR-BILL-21/23. Nếu Invoice chưa PAID và đã nhận đủ, M05 ghi PAID với paymentMethod = SANDBOX qua thao tác xác nhận của Admin; nếu đã PAID thì giữ nguyên bản ghi. Khoản thu thực tế trùng được xử lý ngoài hệ thống.
+7. Khi callback thành công trễ/thất lạc hoặc xung đột, Admin đối chiếu giao dịch đã xác minh theo BR-BILL-21/23. Nếu Invoice chưa PAID và đã nhận đủ, M05 ghi PAID với paymentMethod = BANK_TRANSFER qua thao tác xác nhận của Admin; nếu đã PAID thì giữ nguyên bản ghi. Khoản thu thực tế trùng được xử lý ngoài hệ thống.
 
 ### WF-06. Quá hạn và Admin thu tiền ngoài hệ thống
 
@@ -342,9 +341,9 @@ Thiết kế 1.0 không lưu Invoice DRAFT: dữ liệu chuẩn bị nằm ở B
 ### WF-07. Tenant chủ động kết thúc hợp đồng ACTIVE sớm
 
 1. Admin ghi nhận yêu cầu trả phòng ACTIVE với reason = TENANT_EARLY_EXIT; `effective_end_date` chỉ bằng ngày nghiệp vụ hiện tại UTC+7, không nhập ngày quá khứ/tương lai.
-2. Nếu kết thúc **trong kỳ đang sử dụng**, chốt tiền điện nước thực tế; M06 áp dụng **tiền thuê nguyên kỳ** và tính khoản quyết toán. M05 phát hành Invoice EARLY_SETTLEMENT kỳ cuối hoặc trả NO_CHARGE khi tổng thực sự bằng 0; không xử lý trùng vào ngày 10 sau đó.
-3. Nếu kết thúc **đúng ngày 10 sau một kỳ đã sử dụng và chưa dùng ngày nào của kỳ mới**, không thu tiền thuê kỳ mới, không tạo EARLY_SETTLEMENT. Invoice REGULAR của kỳ vừa kết thúc xử lý tiền thuê và điện nước đúng một lần: nếu chưa phát hành thì Admin chốt đủ điện nước trước khi M05 phát hành, kể cả sau khi Contract đã ENDED; nếu đã phát hành thì giữ nguyên số tiền và áp dụng chính sách sai sót ngoài hệ thống khi cần.
-4. M04 kết thúc Contract và M02 giải phóng Room theo workflow đồng bộ; nếu kỳ cũ chưa sẵn sàng phát hành, nghĩa vụ REGULAR vẫn được giữ để M05 xử lý sau. Nhánh ngày 10 không ghi dấu quyết toán sớm thay cho nghĩa vụ Invoice REGULAR.
+2. Nếu kết thúc **giữa kỳ đang sử dụng**, chốt tiền điện nước thực tế; M06 áp dụng **tiền thuê nguyên kỳ** và tính khoản quyết toán. M05 phát hành Invoice EARLY_SETTLEMENT kỳ cuối hoặc trả NO_CHARGE khi tổng thực sự bằng 0.
+3. Nếu kết thúc **đúng ranh giới kỳ cá nhân sau một kỳ đã sử dụng**, không thu tiền thuê kỳ mới, không tạo EARLY_SETTLEMENT. Invoice REGULAR của kỳ vừa kết thúc xử lý tiền thuê và điện nước đúng một lần: nếu chưa phát hành thì Admin nhập/chốt điện nước và phát hành, kể cả sau khi Contract đã ENDED; nếu đã phát hành thì giữ nguyên số tiền và áp dụng chính sách sai sót ngoài hệ thống khi cần.
+4. M04 kết thúc Contract và M02 giải phóng Room theo workflow đồng bộ; nếu kỳ cũ chưa phát hành, nghĩa vụ REGULAR vẫn được giữ để M05 xử lý sau. Ranh giới kỳ cá nhân không ghi dấu quyết toán sớm thay cho nghĩa vụ Invoice REGULAR.
 5. Khoản chưa thu tiếp tục tồn tại để Admin theo dõi.
 
 ### WF-08. Admin ngừng cung cấp phòng đang RENTED
@@ -375,7 +374,7 @@ Thiết kế 1.0 không lưu Invoice DRAFT: dữ liệu chuẩn bị nằm ở B
 | Tạo hợp đồng trực tiếp | — | — | ✓ | — |
 | Xem hợp đồng của mình | — | ✓ | ✓ (toàn bộ) | — |
 | Quản lý phòng, người ở cùng | — | — | ✓ | Đồng bộ theo hợp đồng |
-| Nhập tiền điện nước | — | — | ✓ | Nhắc/tạo kỳ thu |
+| Nhập điện nước/phát hành theo Contract | — | — | ✓ | Không cần chờ kỳ chung |
 | Xem hóa đơn của mình | — | ✓ | ✓ (toàn bộ) | — |
 | Thanh toán sandbox | — | ✓ (đúng hợp đồng) | — | Gateway phản hồi |
 | Xem lịch sử Invoice PAID | — | ✓ (của mình) | ✓ (toàn bộ) | — |
@@ -398,7 +397,7 @@ Thiết kế 1.0 không lưu Invoice DRAFT: dữ liệu chuẩn bị nằm ở B
 | Admin muốn đưa phòng RENTED thành INACTIVE | Không sửa Room độc lập; phải xử lý Contract và quyết toán tương ứng |
 | Admin sửa giá niêm yết phòng khi có Contract SCHEDULED/ACTIVE | Bị chặn; chỉ sửa khi không còn Contract giữ phòng. Contract lịch sử vẫn dùng giá đã chốt |
 | Khách không đến nhận phòng đúng ngày bắt đầu | SCHEDULED vẫn → ACTIVE; không tự hủy, Admin xử lý chủ động theo workflow hiện có |
-| Server/Scheduler chạy tạo kỳ thu nhiều lần | Không sinh trùng kỳ và Invoice |
+| Admin gửi yêu cầu phát hành cùng kỳ nhiều lần | Không sinh trùng BillingPeriod hoặc Invoice |
 | Admin đã nhập điện nước nhưng phát hành Invoice bị lỗi | Giữ dữ liệu đã nhập, có thể phát hành lại an toàn, không buộc nhập lại hoặc tạo trùng |
 | Tenant chưa trả sau 48 giờ | UNPAID → OVERDUE, Admin thu trực tiếp |
 | Sandbox trả thất bại | Không chuyển PAID, có thể thử lại khi còn UNPAID |
@@ -410,7 +409,7 @@ Thiết kế 1.0 không lưu Invoice DRAFT: dữ liệu chuẩn bị nằm ở B
 | Người ở cùng muốn tự trả tiền trên web | Không được phép |
 | User gửi đơn PENDING thứ hai cùng Room | Bị chặn; vẫn được gửi đơn cho phòng khác hoặc gửi lại sau khi đơn cũ đã xử lý |
 | Đơn PENDING có ngày bắt đầu đã qua | Tự REJECTED, ghi lý do; không backdate Contract |
-| Tenant trả sớm đúng ngày 10 sau kỳ đã sử dụng | Không phát sinh kỳ mới; kỳ trước do REGULAR Invoice xử lý đúng một lần, không tạo EARLY_SETTLEMENT hoặc sửa Invoice đã phát hành |
+| Tenant trả sớm đúng ranh giới kỳ cá nhân | Không phát sinh kỳ mới; kỳ trước do REGULAR Invoice xử lý đúng một lần, không tạo EARLY_SETTLEMENT hoặc sửa Invoice đã phát hành |
 | Tổng khoản thu bằng 0 | Ghi NO_CHARGE, không tạo Invoice, không xử lý lại vô hạn |
 | Sai tiền sau phát hành | Giữ nguyên tiền; xử lý ngoài đời không tự xóa công nợ/đánh dấu PAID |
 | Notification chậm/retry | dueAt không đổi; chống trùng sự kiện–người nhận |
@@ -445,18 +444,18 @@ Danh mục này là **bản mục tiêu nghiệp vụ**, không tự ấn địn
 | UC21 | Tự kết thúc hợp đồng đúng hạn | Scheduler | ACTIVE → ENDED, giải phóng Room; không gia hạn/sửa ngày kết thúc |
 | UC22 | Đồng bộ trạng thái phòng theo hợp đồng | System | Room đúng với vòng đời Contract; giá chỉ sửa khi không còn SCHEDULED/ACTIVE |
 | UC23 | Quản lý thông tin người ở cùng | Admin | Lưu danh sách hiện tại trong sức chứa, không trùng CCCD/cùng Contract, không sửa sau ENDED/CANCELLED |
-| UC24 | Tạo/kiểm tra kỳ thu ngày 10 | Scheduler | BillingCycle đúng, không trùng |
-| UC25 | Admin nhập tiền điện nước | Admin | Chốt đủ điện nước của kỳ |
-| UC26 | Tính toán, phát hành Invoice | System | Invoice UNPAID với khoản phải thu đúng hoặc NO_CHARGE khi tổng 0 |
+| UC24 | Xem kỳ đến hạn theo hợp đồng | Admin | M05 gợi ý kỳ tiếp theo theo ngày bắt đầu thuê |
+| UC25 | Nhập điện nước và yêu cầu phát hành | Admin | Chốt đủ điện nước cho một hợp đồng |
+| UC26 | Tính tiền và ghi nhận kết quả kỳ | System | Invoice UNPAID hoặc NO_CHARGE cho đúng Contract/kỳ |
 | UC27 | Người thuê xem Invoice | Tenant | Xem các Invoice của mình, cả chưa thanh toán và đã trả |
 | UC28 | Thanh toán sandbox | Tenant | Khởi tạo thanh toán online hợp lệ |
 | UC29 | Xác minh kết quả sandbox | Gateway/System | Xác minh kết quả, ghi PAID một lần; kết quả trễ/thất lạc/xung đột đưa Admin đối chiếu |
-| UC30 | Admin xác nhận thanh toán thực tế | Admin | Xác nhận tiền ngoài hệ thống hoặc giao dịch SANDBOX đã xác minh qua M05; không ghi đè PAID |
+| UC30 | Admin xác nhận thanh toán thực tế | Admin | Ghi nhận CASH/BANK_TRANSFER sau khi đã nhận đủ; đối chiếu VNPAY thành công cũng lưu BANK_TRANSFER; không ghi đè PAID |
 | UC31 | Phát hiện hóa đơn quá hạn | Scheduler | UNPAID quá hạn → OVERDUE |
 | UC32 | Admin tìm hóa đơn chưa thanh toán | Admin | Truy vấn UNPAID/OVERDUE |
 | UC33 | Xem lịch sử hóa đơn đã thanh toán | Tenant/Admin | Truy vấn Invoice PAID, giới hạn quyền xem |
-| UC34 | Kết thúc hợp đồng trước hạn | Admin | ACTIVE → ENDED với effectiveEndDate là hôm nay UTC+7; áp dụng ngoại lệ ngày 10 |
-| UC35 | Quyết toán kỳ cuối | Admin/System | Trong kỳ: Invoice hoặc NO_CHARGE; ngày 10 sau kỳ đã ở: REGULAR xử lý, không thêm Invoice |
+| UC34 | Kết thúc hợp đồng trước hạn | Admin | ACTIVE → ENDED với effectiveEndDate là hôm nay UTC+7; áp dụng ngoại lệ ranh giới kỳ cá nhân |
+| UC35 | Quyết toán kỳ cuối | Admin/System | Giữa kỳ: Invoice hoặc NO_CHARGE; đúng ranh giới kỳ: REGULAR xử lý, không thêm Invoice |
 | UC36 | Tạo yêu cầu sửa chữa/phản ánh | Tenant | Issue OPEN của hợp đồng ACTIVE |
 | UC37 | Theo dõi yêu cầu của mình | Tenant | Xem trạng thái và lịch sử Issue |
 | UC38 | Xử lý yêu cầu | Admin | Cập nhật Issue đến RESOLVED kể cả khi Contract đã kết thúc |
@@ -473,7 +472,7 @@ Danh mục này là **bản mục tiêu nghiệp vụ**, không tự ấn địn
 | M02 | Room Management | UC04–09, UC22 | 7 | Room |
 | M03 | Rental Application | UC10–15 | 6 | RentalApplication |
 | M04 | Contract Management | UC16–21, UC23, UC34 | 8 | Contract, người ở cùng |
-| M05 | Billing & Online Payment | UC24–29, UC33 | 7 | BillingCycle, BillingCycleItem, Invoice, sandbox |
+| M05 | Billing & Online Payment | UC24–29, UC33 | 7 | BillingPeriod, Invoice, sandbox |
 | M06 | Collection, Settlement & Notification | UC30–32, UC35, UC39–40 | 6 | Notification; điều phối công nợ và quyết toán |
 | **Tổng** | | **UC01–UC40** | **40** | |
 
@@ -508,12 +507,12 @@ Một bản demo đạt yêu cầu tối thiểu cần chứng minh:
 4. Admin cho thuê trực tiếp và tự từ chối các đơn cạnh tranh.
 5. Contract SCHEDULED → ACTIVE đúng ngày dù khách chưa đến; ACTIVE → ENDED đúng hạn; Room được đồng bộ; không gia hạn/sửa plannedEndDate.
 6. Người ở cùng được Admin quản lý, không vượt sức chứa, không trùng CCCD trong Contract, không sửa sau ENDED/CANCELLED và không có quyền thanh toán.
-7. Kỳ thu ngày 10 yêu cầu nhập đủ tiền điện nước; hóa đơn kỳ đầu và kỳ thường tính đúng.
-8. Cùng một kỳ không thể phát hành hóa đơn trùng vì Scheduler chạy lại.
+7. Kỳ thu tính theo ngày bắt đầu từng hợp đồng; Admin phát hành riêng từng hợp đồng sau khi kỳ đã kết thúc.
+8. Cùng một kỳ cá nhân không thể phát hành hóa đơn trùng khi Admin gửi lại yêu cầu hoặc thao tác đồng thời.
 9. Tenant xem đúng hóa đơn của mình, thanh toán sandbox thành công/thất bại; chỉ một lần ghi nhận PAID.
 10. Hóa đơn quá 48 giờ chuyển OVERDUE; Admin tìm và xác nhận thanh toán ngoài hệ thống.
 11. Tenant và Admin xem được lịch sử Invoice PAID; kể cả hóa đơn của hợp đồng đã kết thúc.
-12. Trả phòng sớm trong kỳ do Tenant thu nguyên kỳ; đúng ngày 10 sau kỳ đã ở thì REGULAR xử lý kỳ cũ, không có tiền kỳ mới; Admin ngừng cung cấp thì tính theo ngày thực tế.
+12. Trả phòng sớm giữa kỳ do Tenant thu nguyên kỳ; đúng ranh giới kỳ cá nhân thì REGULAR xử lý kỳ cũ, không có tiền kỳ mới; Admin ngừng cung cấp thì tính theo ngày thực tế.
 13. Không tạo trùng kỳ cuối sau khi đã có hóa đơn quyết toán; nợ chưa trả vẫn được theo dõi.
 14. Admin đưa phòng đang thuê về INACTIVE thông qua kết thúc/hủy hợp đồng hợp lệ; Admin phải tự mở lại phòng.
 15. Tenant chỉ gửi Issue khi hợp đồng ACTIVE; Admin xử lý Issue đang mở tiếp sau khi Contract kết thúc, Tenant xem được lịch sử.
@@ -530,16 +529,16 @@ Một bản demo đạt yêu cầu tối thiểu cần chứng minh:
 
 ### 12.1. Đã thống nhất cho bản 1.0
 
-1. Ngày dùng khoảng [from, to); ngày nghiệp vụ UTC+7; kỳ mới bắt đầu 00:00 ngày 10; timestamp lưu UTC.
+1. Ngày dùng khoảng [from, to); ngày nghiệp vụ UTC+7; kỳ cá nhân neo theo `start_date`; timestamp lưu UTC.
 2. Tiền DECIMAL(19,0)/BigDecimal; HALF_UP trên khoản tiền thuê cuối, giữ chính xác trung gian, không dùng float/double.
 3. dueAt = issuedAt + 48 giờ, không phụ thuộc Notification.
-4. Mô hình 10 bảng trong database_design.md; không Payment, không bảng người nhận riêng, không outbox, không Entity Dashboard.
-5. Một kỳ theo collectionDate; một Invoice theo Contract + mốc ngày 10; một PENDING/User–Room; một SCHEDULED/ACTIVE/Room.
-6. Điện nước lưu trước ở BillingCycleItem; ghi cả kết quả NO_CHARGE để chạy lại an toàn.
+4. Mô hình 9 bảng trong database_design.md; không Payment, không bảng người nhận riêng, không outbox, không Entity Dashboard.
+5. Một BillingPeriod/Invoice theo Contract + ngày kết thúc kỳ cá nhân; một PENDING/User–Room; một SCHEDULED/ACTIVE/Room.
+6. Điện nước và kết quả INVOICED/NO_CHARGE thuộc BillingPeriod để chạy lại an toàn.
 7. Trạng thái Room, Application, Contract, Invoice độc lập. Invoice không lưu DRAFT; REGULAR/EARLY_SETTLEMENT là loại, không phải trạng thái thanh toán.
 8. Notification một dòng/người nhận, sau commit, retry có giới hạn và chống trùng; chấp nhận giới hạn phục hồi khi tiến trình dừng.
 9. CCCD bắt buộc khi đăng ký và seed Admin; Room có tầng dương bắt buộc, diện tích dương nếu được nhập và một ảnh đại diện; giá niêm yết/giá Contract dương, giá Contract sao từ Room khi tạo và bất biến; người ở cùng không trùng CCCD trong cùng Contract.
-10. Tenant trả sớm đúng ngày 10 sau kỳ đã sử dụng không phát sinh tiền kỳ mới; Invoice REGULAR xử lý kỳ cũ. Không gia hạn Contract; Issue đã tạo không tự đóng khi Contract kết thúc.
+10. Tenant trả sớm đúng ranh giới kỳ cá nhân sau khi đã sử dụng không phát sinh tiền kỳ mới; Invoice REGULAR xử lý kỳ cũ. Không gia hạn Contract; Issue đã tạo không tự đóng khi Contract kết thúc.
 11. Email đăng nhập phân biệt chữ hoa/thường trên toàn địa chỉ; bỏ khoảng trắng đầu/cuối nhưng không chuyển chữ thường. Không áp thêm thời hạn thuê tối thiểu ngoài `planned_end_date > start_date`.
 12. Foundation giữ `created_at`/`updated_at` trên cả 10 bảng và thời điểm UTC; quản lý schema bằng một SQL script chạy thủ công một lần, kiểm tra JPA mapping bằng `validate`, seed một ADMIN bằng script riêng. Không yêu cầu Flyway hoặc hệ thống audit lịch sử.
 
@@ -548,14 +547,14 @@ Một bản demo đạt yêu cầu tối thiểu cần chứng minh:
 - Chọn gateway, xác minh chữ ký/tham chiếu, phản hồi callback và lệnh Admin đối chiếu; giữ đúng nguồn tiền.
 - Chốt DTO, hành vi lỗi, coordinator, thứ tự khóa và quyền server cho các workflow; mọi ghi Invoice qua M05.
 - Chốt cấu hình retry/log, định dạng giấy tờ, lịch chạy và cách mapping timestamp UTC; khi triển khai chọn collation SQL Server phân biệt hoa/thường phù hợp với quy tắc email đã chốt.
-- Kiểm thử Scheduler ngày 10: Contract đã ENDED vẫn được truy ra nghĩa vụ REGULAR; khi Tenant trả sớm đúng biên không tạo EARLY_SETTLEMENT, điện nước kỳ cũ được chốt đúng một lần.
+- Kiểm tra chu kỳ cá nhân: Contract đã ENDED vẫn được truy ra nghĩa vụ REGULAR; khi Tenant trả đúng ranh giới không tạo EARLY_SETTLEMENT, điện nước kỳ cũ được chốt đúng một lần.
 - Đặc tả cách lấy thông tin giao dịch sandbox đã xác minh cho Admin đối chiếu; không tạo lịch sử từng lần thử hoặc ghi đè Invoice PAID.
 - Xác nhận kết nối tới SQL Server dùng cho kiểm thử Foundation; đối chiếu schema, Entity, constraint và seed bằng dữ liệu mẫu trước khi bàn giao cho sáu module.
 - Cơ chế lưu kết quả NO_CHARGE và các constraint cụ thể nằm trong database_design.md; thay đổi phải đồng bộ trước khi nhiều người triển khai.
 
 ### Những điều KHÔNG nên tự thay đổi khi giải quyết kỹ thuật
 
-- Không đổi ngày thu tiền từ 10 sang ngày khác.
+- Không quay lại một ngày phát hành hóa đơn chung toàn tòa nhà; Admin phát hành theo kỳ riêng của từng hợp đồng.
 - Không chuyển sang thu tiền trả trước.
 - Không tự thêm deposit, trả góp, Payment entity, hoặc theo dõi tất cả lần thử thanh toán.
 - Không cho Tenant thanh toán hóa đơn OVERDUE bằng sandbox nếu chưa có quyết định nghiệp vụ mới.

@@ -42,7 +42,7 @@
 
             <!-- Nút hành động dẫn sang nộp đơn của M03 (UC10) -->
             <div class="d-grid gap-2">
-                <a th:href="@{/applications/apply(roomId=${room.id})}" class="btn btn-primary btn-lg py-3 fw-semibold">
+                <a th:href="@{/customer/applications/apply/{roomId}(roomId=${room.id})}" class="btn btn-primary btn-lg py-3 fw-semibold">
                     Đăng ký thuê phòng này
                 </a>
             </div>

@@ -3,6 +3,7 @@ package com.apartment.rental.contract.service;
 import com.apartment.rental.account.dto.response.UserInfoForM04Response;
 import com.apartment.rental.contract.dto.request.CreateContractFromApplicationRequest;
 import com.apartment.rental.contract.dto.request.DirectContractRequest;
+import com.apartment.rental.contract.dto.response.ContractBillingResponse;
 import com.apartment.rental.contract.dto.response.ContractDetailResponse;
 import com.apartment.rental.contract.dto.response.ContractResponse;
 import com.apartment.rental.contract.entity.ContractEndReason;
@@ -11,8 +12,16 @@ import com.apartment.rental.room.dto.response.RoomOptionForM04Response;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface ContractService {
+
+    List<ContractBillingResponse> findEligibleContractsForRegularBilling(LocalDate today);
+
+    Optional<ContractBillingResponse> lockEligibleContractForBilling(
+            Long contractId,
+            LocalDate today
+    );
 
     List<ContractResponse> getTenantContracts(Long tenantId);
 

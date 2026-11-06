@@ -12,8 +12,6 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable());
-
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                         "/",
@@ -24,10 +22,13 @@ public class SecurityConfig {
                         "/css/**",
                         "/js/**",
                         "/images/**",
-                        "/vendor/**"
+                        "/vendor/**",
+                        "/favicon.ico",
+                        "/payment/vnpay/return"
                 ).permitAll()
-                .requestMatchers("/admin/**").hasRole("ADMIN")
-                .requestMatchers("/customer/**").hasRole("USER")
+                .requestMatchers("/admin", "/admin/**").hasRole("ADMIN")
+                .requestMatchers("/customer", "/customer/**").hasRole("USER")
+                .requestMatchers("/payment/**").hasRole("USER")
                 .anyRequest().authenticated()
         );
 
@@ -39,10 +40,14 @@ public class SecurityConfig {
                 .successHandler((request, response, authentication) -> {
                     boolean isAdmin = authentication.getAuthorities().stream()
                             .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                    boolean isCustomer = authentication.getAuthorities().stream()
+                            .anyMatch(a -> a.getAuthority().equals("ROLE_USER"));
                     if (isAdmin) {
                         response.sendRedirect("/admin/dashboard");
+                    } else if (isCustomer) {
+                        response.sendRedirect("/rooms");
                     } else {
-                        response.sendRedirect("/");
+                        response.sendRedirect("/rooms");
                     }
                 })
                 .failureUrl("/login?error")

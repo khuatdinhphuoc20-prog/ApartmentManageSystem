@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+/** Repository owned by the Room module (M02). */
 @Repository
 public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificationExecutor<Room> {
 
@@ -59,9 +60,9 @@ public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificat
             ORDER BY r.floorNumber ASC, r.roomCode ASC
             """)
     List<Room> filterAvailableRooms(@Param("floorNumber") Short floorNumber,
-                                   @Param("minPrice") BigDecimal minPrice,
-                                   @Param("maxPrice") BigDecimal maxPrice,
-                                   @Param("minCapacity") Short minCapacity,
-                                   @Param("minArea") BigDecimal minArea,
-                                   @Param("maxArea") BigDecimal maxArea);
+                                    @Param("minPrice") BigDecimal minPrice,
+                                    @Param("maxPrice") BigDecimal maxPrice,
+                                    @Param("minCapacity") Short minCapacity,
+                                    @Param("minArea") BigDecimal minArea,
+                                    @Param("maxArea") BigDecimal maxArea);
 }
