@@ -16,8 +16,8 @@
             <div class="nav-section">Khám phá</div>
             <th:block th:replace="~{fragments/customer-sidebar :: item('rooms', 'Phòng cho thuê', 'building', @{/#rooms}, ${active})}"></th:block>
             <div class="nav-section mt-3">Góc người thuê</div>
-            <th:block th:replace="~{fragments/customer-sidebar :: item('profile', 'Hồ sơ của tôi', 'people', ${null}, ${active})}"></th:block>
-            <th:block th:replace="~{fragments/customer-sidebar :: item('applications', 'Đơn thuê của tôi', 'clipboard', @{/customer/applications}, ${active})}"></th:block>
+            <th:block th:replace="~{fragments/customer-sidebar :: item('profile', 'Hồ sơ của tôi', 'people', @{/profile}, ${active})}"></th:block>
+            <th:block th:replace="~{fragments/customer-sidebar :: item('applications', 'Đơn thuê của tôi', 'clipboard', ${null}, ${active})}"></th:block>
             <th:block th:replace="~{fragments/customer-sidebar :: item('contracts', 'Hợp đồng của tôi', 'file', ${null}, ${active})}"></th:block>
             <th:block th:replace="~{fragments/customer-sidebar :: item('invoices', 'Hóa đơn & thanh toán', 'receipt', ${null}, ${active})}"></th:block>
             <th:block th:replace="~{fragments/customer-sidebar :: item('issues', 'Phản ánh của tôi', 'message', ${null}, ${active})}"></th:block>
