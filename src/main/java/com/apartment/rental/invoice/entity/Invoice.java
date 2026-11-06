@@ -1,7 +1,7 @@
 package com.apartment.rental.invoice.entity;
 
 import com.apartment.rental.account.entity.User;
-import com.apartment.rental.billing.entity.BillingCycleItem;
+import com.apartment.rental.billing.entity.BillingPeriod;
 import com.apartment.rental.contract.entity.Contract;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -63,7 +63,7 @@ public class Invoice {
 
     public static Invoice regular(
         Contract contract,
-        BillingCycleItem item,
+        BillingPeriod billingPeriod,
         LocalDate billingPeriodEndDate,
         LocalDate usageFrom,
         LocalDate usageTo,
@@ -78,7 +78,7 @@ public class Invoice {
     ) {
         Invoice invoice = new Invoice();
         invoice.setContract(contract);
-        invoice.setBillingCycleItem(item);
+        invoice.setBillingPeriod(billingPeriod);
         invoice.setBillingPeriodEndDate(billingPeriodEndDate);
         invoice.setInvoiceKind(InvoiceKind.REGULAR);
         invoice.setUsageFrom(usageFrom);
@@ -101,8 +101,8 @@ public class Invoice {
     private Contract contract;
 
     @OneToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "billing_cycle_item_id", nullable = true)
-    private BillingCycleItem billingCycleItem;
+    @JoinColumn(name = "billing_period_id", nullable = true)
+    private BillingPeriod billingPeriod;
 
     @Column(name = "billing_period_end_date", nullable = false)
     private LocalDate billingPeriodEndDate;

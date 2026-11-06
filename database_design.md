@@ -17,8 +17,7 @@ Hệ thống quản lý một tòa nhà, một chủ trọ. Đơn vị cho thuê
 | rental_applications | Một lần đề nghị thuê một phòng | M03 |
 | contracts | Một thỏa thuận thuê giữa một đại diện và một phòng | M04 |
 | contract_co_occupants | Một người ở cùng được khai báo dưới Contract | M04 |
-| billing_cycles | Một kỳ thu định kỳ của tòa nhà, mốc ngày 10 | M05 |
-| billing_cycle_items | Một nghĩa vụ của Contract thuộc kỳ và dữ liệu chuẩn bị khoản thu | M05 |
+| billing_periods | Một kỳ thuê riêng của Contract cùng dữ liệu điện nước đã chốt | M05 |
 | invoices | Một khoản phải thu đã phát hành và kết quả thanh toán | M05 |
 | issues | Một phản ánh/yêu cầu sửa chữa liên quan Contract | M01 |
 | notifications | Một bản thông báo đến một người nhận | M06 |
@@ -29,10 +28,10 @@ Hệ thống quản lý một tòa nhà, một chủ trọ. Đơn vị cho thuê
 
 Hai bổ sung kỹ thuật để hiện thực quy tắc không tạo Invoice tổng 0:
 
-- BillingCycleItem có processing_result, rent_amount và processed_at để phân biệt chưa xử lý với đã xử lý không cần thu.
-- Contract có dấu kết quả quyết toán sớm và mốc kỳ; M04 lưu kết quả do M05 trả về, không tự tính tiền. Dấu này dùng khi quyết toán sớm **ngoài ngoại lệ Tenant biên ngày 10**, thường trước kỳ thu nên chưa có BillingCycleItem. Tenant trả sớm đúng ngày 10 sau kỳ đã sử dụng là ngoại lệ: kỳ cũ dùng xử lý REGULAR Invoice/BillingCycleItem, không ghi dấu quyết toán sớm hay tạo EARLY_SETTLEMENT.
+- BillingPeriod có processing_result, rent_amount và processed_at để phân biệt đang chờ nhập với đã xử lý không cần thu. Mỗi Contract tiến theo ngày bắt đầu thuê, không thuộc một kỳ chung của tòa nhà.
+- Contract có dấu kết quả quyết toán sớm và mốc kỳ; M04 lưu kết quả do M05 trả về, không tự tính tiền. Khi Tenant kết thúc đúng ngày ranh giới của kỳ cá nhân, nghĩa vụ REGULAR kỳ vừa dùng được xử lý một lần; M04 không ghi quyết toán sớm thay thế nghĩa vụ đó.
 
-Đây là dữ liệu kỹ thuật trong 10 bảng hiện có, không thêm nghiệp vụ thu tiền hoặc bảng lịch sử.
+Đây là dữ liệu kỹ thuật trong 9 bảng hiện có, không thêm nghiệp vụ thu tiền hoặc bảng lịch sử.
 
 ## 2. Quy ước dữ liệu chung
 
@@ -72,10 +71,9 @@ erDiagram
     ROOMS ||--o{ CONTRACTS : has_history
     RENTAL_APPLICATIONS |o--o| CONTRACTS : creates
     CONTRACTS ||--o{ CONTRACT_CO_OCCUPANTS : includes
-    BILLING_CYCLES ||--o{ BILLING_CYCLE_ITEMS : contains
-    CONTRACTS ||--o{ BILLING_CYCLE_ITEMS : charged_in
+    CONTRACTS ||--o{ BILLING_PERIODS : billed_in
     CONTRACTS ||--o{ INVOICES : owes
-    BILLING_CYCLE_ITEMS |o--o| INVOICES : prepares
+    BILLING_PERIODS |o--o| INVOICES : prepares
     USERS ||--o{ ISSUES : reports
     CONTRACTS ||--o{ ISSUES : concerns
     USERS ||--o{ NOTIFICATIONS : receives
@@ -131,18 +129,12 @@ erDiagram
         nvarchar full_name
         nvarchar identity_document_no
     }
-    BILLING_CYCLES {
+    BILLING_PERIODS {
         bigint id PK
-        date collection_date UK
-        varchar status
-        datetime2 completed_at
-    }
-    BILLING_CYCLE_ITEMS {
-        bigint id PK
-        bigint billing_cycle_id FK
         bigint contract_id FK
         date usage_from
         date usage_to
+        date billing_period_end_date
         decimal rent_amount
         decimal electricity_amount
         decimal water_amount
@@ -152,7 +144,7 @@ erDiagram
     INVOICES {
         bigint id PK
         bigint contract_id FK
-        bigint billing_cycle_item_id FK
+        bigint billing_period_id FK
         date billing_period_end_date
         varchar invoice_kind
         varchar rent_calculation_rule
@@ -187,8 +179,7 @@ erDiagram
 
 - User–Contract, Room–Contract, Contract–Invoice: 1–N; nhiều Contract của Room là **qua lịch sử**.
 - Application–Contract: mỗi phía 0..1 ở cấp sơ đồ; đơn APPROVED bắt buộc có Contract qua workflow. Contract trực tiếp không có Application.
-- BillingCycleItem–Invoice: mỗi phía 0..1; NO_CHARGE không có Invoice; quyết toán sớm có thể không qua BillingCycleItem.
-- BillingCycle–Contract là N–N qua BillingCycleItem có dữ liệu nghiệp vụ.
+- BillingPeriod–Invoice: mỗi phía 0..1; NO_CHARGE không có Invoice; quyết toán sớm có thể không qua BillingPeriod.
 - User–Room là quan hệ thuê qua Contract; không cần bảng UserRoom riêng.
 - User–Notification là 1–N theo người nhận; gửi chung nội dung tạo nhiều bản độc lập.
 - Điều kiện chỉ một SCHEDULED/ACTIVE/Room cần unique filtered index, không thể hiện đầy đủ bằng đường nối ERD.
@@ -261,7 +252,7 @@ Ai thuê phòng nào, giá chốt bao nhiêu, thời hạn nào, kết thúc the
 | tenant_id | BIGINT | Không | FK users; đại diện, không UNIQUE vì một người thuê nhiều phòng |
 | agreed_monthly_rent | DECIMAL(19,0) | Không | Sao **đúng** rooms.listed_monthly_rent hiện hành trong transaction tạo Contract, > 0; nguồn tính tiền bất biến, Admin không nhập giá khác |
 | start_date | DATE | Không | Ngày bắt đầu nghiệp vụ |
-| planned_end_date | DATE | Không | Thời hạn gốc, ngày 10; không ghi đè khi kết thúc sớm |
+| planned_end_date | DATE | Không | Thời hạn gốc; không ghi đè khi kết thúc sớm |
 | effective_end_date | DATE | Có | Ngày kết thúc thực tế khi ENDED; không tính ngày này |
 | status | VARCHAR(16) | Không | SCHEDULED / ACTIVE / ENDED / CANCELLED |
 | end_reason | VARCHAR(32) | Có | NATURAL_EXPIRY / TENANT_EARLY_EXIT / ADMIN_STOP_SERVICE; dùng khi ENDED |
@@ -277,12 +268,12 @@ Ai thuê phòng nào, giá chốt bao nhiêu, thời hạn nào, kết thúc the
 
 Ràng buộc:
 
-- planned_end_date > start_date, ngày 10. Khi tạo: hôm nay <= start_date <= hôm nay + 10 ngày, kiểm tra Service.
+- planned_end_date > start_date. Khi tạo: hôm nay <= start_date <= hôm nay + 10 ngày, kiểm tra Service.
 - ENDED: effective_end_date/end_reason/ended_at bắt buộc; start_date <= effective_end_date <= planned_end_date. NATURAL_EXPIRY có effective_end_date = planned_end_date; lý do kết thúc sớm có effective_end_date < planned_end_date.
 - SCHEDULED/ACTIVE: effective_end_date/end_reason/ended_at/cancelled_at NULL. ACTIVE có activated_at; SCHEDULED chưa có activated_at.
 - CANCELLED: cancelled_at và Admin đóng bắt buộc, chưa activated_at; effective_end_date/end_reason/ended_at NULL. Hủy chỉ trước ngày bắt đầu, kiểm tra giờ/ngày ở Service.
 - ENDED có activated_at, cancelled_at NULL. Kết thúc sớm có closed_by_user_id; tự nhiên không có người đóng.
-- Ba cột kết quả quyết toán sớm cùng có giá trị khi ENDED sớm, **trừ ngoại lệ Tenant biên ngày 10**; các trường hợp còn lại cùng NULL. Ngoại lệ `end_reason = TENANT_EARLY_EXIT`, `effective_end_date` là ngày 10 sau kỳ đã ở: ba cột này NULL vì REGULAR Invoice/BillingCycleItem của kỳ cũ xử lý nghĩa vụ, dù Contract vẫn kết thúc sớm. Mốc kỳ nếu có phải ngày 10. INVOICED phải có EARLY_SETTLEMENT Invoice khớp Contract/mốc kỳ; NO_CHARGE không có Invoice cho nghĩa vụ đó. Kiểm tra chéo với ngày/kỳ/Invoice trong transaction, không suy ra chỉ từ CHECK đơn bảng.
+- Ba cột kết quả quyết toán sớm cùng có giá trị khi ENDED sớm, trừ Tenant kết thúc đúng ranh giới kỳ cá nhân đã sử dụng; trường hợp đó ba cột cùng NULL vì REGULAR Invoice/BillingPeriod của kỳ cũ xử lý nghĩa vụ. Mốc kỳ có thể là bất kỳ ngày nào. INVOICED phải có EARLY_SETTLEMENT Invoice khớp Contract/mốc kỳ; NO_CHARGE không có Invoice cho nghĩa vụ đó. Kiểm tra chéo với ngày/kỳ/Invoice trong transaction, không suy ra chỉ từ CHECK đơn bảng.
 - `SCHEDULED` đến `start_date` tự ACTIVE dù khách không đến; không auto CANCELLED. Admin xử lý chủ động qua trạng thái hiện có. Kết thúc ACTIVE trước hạn chỉ với `effective_end_date` bằng ngày nghiệp vụ hiện tại UTC+7; không nhập ngày quá khứ/tương lai. Mốc `ended_at` là lúc ghi, không phải ngày nghiệp vụ.
 - Filtered UNIQUE room_id với tập status IN (SCHEDULED, ACTIVE). Một index chung cho cả hai trạng thái, khai báo trong `schema.sql`; không đặt UNIQUE toàn bảng trên `room_id` qua Entity vì Room vẫn cần nhiều Contract lịch sử.
 - Filtered UNIQUE application_id khi khác NULL; duyệt từ đơn phải khớp applicant/room. Không tạo đơn giả cho thuê trực tiếp.
@@ -301,30 +292,17 @@ Danh sách thông tin người ở cùng của Contract; không chứa người 
 
 Không user_id, move_in_date, move_out_date hoặc status cư trú. Chỉ Admin quản lý. UNIQUE `(contract_id, identity_document_no)` để chặn trùng CCCD trong cùng Contract; chuẩn hóa/loại chuỗi trắng trước khi so sánh. Không UNIQUE giấy tờ toàn lịch sử. Service kiểm tra 1 người đại diện + số người ở cùng <= capacity, kiểm soát hai lần thêm đồng thời và chặn sửa danh sách khi Contract ENDED/CANCELLED. Contract kết thúc thì quyền ở theo Contract chấm dứt; không tạo sự kiện ra/vào cho từng người.
 
-### 4.6. billing_cycles — M05
+### 4.6. billing_periods — M05
 
-Một kỳ thu toàn tòa nhà. COMPLETED nghĩa là đã xử lý các khoản thuộc kỳ, không có nghĩa Tenant đã thanh toán.
-
-| Cột | Kiểu | NULL? | Khóa/ngữ nghĩa |
-|---|---|---|---|
-| id | BIGINT IDENTITY | Không | PK |
-| collection_date | DATE | Không | UQ; ngày 10 kết thúc kỳ chuẩn, ví dụ 2026-11-10 |
-| status | VARCHAR(20) | Không | PENDING_INPUT / COMPLETED |
-| completed_at | DATETIME2(3) | Có | Thời điểm hoàn tất phát hành/ghi NO_CHARGE cho tập nghĩa vụ |
-
-CHECK ngày collection_date = 10; COMPLETED có completed_at, PENDING_INPUT thì NULL. Kỳ chuẩn suy ra từ lịch: [10 tháng trước, collection_date); không trừ cố định 30 ngày. Nếu không có nghĩa vụ sau khi xác định đầy đủ tập cần thu thì có thể hoàn tất kỳ rỗng. Chỉ tạo/mở bước nhập bắt buộc cho kỳ đã đến hạn; quyết toán trước kỳ không tự mở kỳ tương lai để khóa giao diện Admin.
-
-### 4.7. billing_cycle_items — M05
-
-Một Contract cần xử lý trong một kỳ và dữ liệu chuẩn bị. Admin nhập **tiền**, không nhập công tơ. Room và đại diện truy qua Contract để tránh lưu lặp.
+Một kỳ tính tiền riêng của Contract, neo theo ngày bắt đầu thuê. Admin nhập tiền điện/nước rồi phát hành từng kỳ độc lập; không có BillingCycle toàn tòa nhà hay bước chặn chờ các phòng khác.
 
 | Cột | Kiểu | NULL? | Khóa/ngữ nghĩa |
 |---|---|---|---|
 | id | BIGINT IDENTITY | Không | PK |
-| billing_cycle_id | BIGINT | Không | FK billing_cycles |
 | contract_id | BIGINT | Không | FK contracts |
 | usage_from | DATE | Không | Đầu khoảng sử dụng cần thu |
 | usage_to | DATE | Không | Cuối khoảng, không tính ngày này |
+| billing_period_end_date | DATE | Không | Ngày kết thúc kỳ cá nhân; UNIQUE cùng contract_id |
 | electricity_amount | DECIMAL(19,0) | Có | NULL chưa nhập; 0 đã nhập giá trị 0 |
 | water_amount | DECIMAL(19,0) | Có | NULL chưa nhập; 0 không có khoản nước |
 | input_completed_at | DATETIME2(3) | Có | Lúc Admin chốt đủ hai khoản điện nước |
@@ -333,27 +311,27 @@ Một Contract cần xử lý trong một kỳ và dữ liệu chuẩn bị. Adm
 | processing_result | VARCHAR(16) | Không | PENDING / INVOICED / NO_CHARGE, ban đầu PENDING |
 | processed_at | DATETIME2(3) | Có | Lúc nghĩa vụ được xử lý xong; khác lúc nhập điện nước |
 
-UNIQUE (billing_cycle_id, contract_id). Thêm UNIQUE (id, contract_id) làm khóa tham chiếu cho **FK ghép bắt buộc** của Invoice ở mục 6. Đây là khóa hỗ trợ toàn vẹn, không tạo quan hệ nghiệp vụ mới.
+UNIQUE (contract_id, billing_period_end_date). Thêm UNIQUE (id, contract_id) làm khóa tham chiếu cho **FK ghép bắt buộc** của Invoice ở mục 6. Đây là khóa hỗ trợ toàn vẹn, không tạo quan hệ nghiệp vụ mới.
 
-- Các khoản tiền nếu có thì >= 0; usage_from <= usage_to.
+- Các khoản tiền nếu có thì >= 0; usage_from <= usage_to <= billing_period_end_date.
 - input_completed_at có giá trị thì hai khoản điện nước và entered_by_user_id phải có. Chưa chốt thì chưa phát hành.
 - PENDING: rent_amount/processed_at NULL; có thể đã nhập đủ điện nước nhưng phát hành lỗi.
 - INVOICED: có rent_amount, đủ điện nước, processed_at và tổng > 0; Service bảo đảm có Invoice đúng nghĩa vụ.
 - NO_CHARGE: rent_amount, electricity_amount, water_amount đều bằng 0, đủ thông tin chốt và processed_at; không có Invoice cho nghĩa vụ đó.
 - Sau INVOICED/NO_CHARGE, không sửa các dữ kiện khoản thu bằng form nhập thông thường.
 
-Ví dụ kỳ 10/11 có C01/P101 điện 180.000 nước 60.000; C02/P102 chưa nhập (NULL); C03/P103 điện 0 nước 50.000. Có ba dòng chi tiết; C02 chặn hoàn tất kỳ, C03 không thiếu tiền điện. Hai Contract lần lượt thuê cùng phòng trong kỳ được nhập riêng, không UNIQUE Room–kỳ.
+Kỳ chưa xử lý có thể giữ trạng thái PENDING và dữ liệu nhập còn thiếu để Admin quay lại. Một phòng khác có thể phát hành độc lập; một hợp đồng thay đổi giữa kỳ có bản ghi riêng theo Contract, không UNIQUE Room–kỳ.
 
-### 4.8. invoices — M05
+### 4.7. invoices — M05
 
-Khoản phải thu đã phát hành, tổng > 0. Thông tin tiền là snapshot; lịch sử thanh toán truy vấn chính Invoice PAID. Không lưu DRAFT hoặc từng lần thử sandbox. Tenant trả sớm đúng ngày 10 sau kỳ đã ở dùng Invoice REGULAR của kỳ đó, không tạo EARLY_SETTLEMENT cho kỳ mới 0 ngày.
+Khoản phải thu đã phát hành, tổng > 0. Thông tin tiền là snapshot; lịch sử thanh toán truy vấn chính Invoice PAID. Không lưu từng lần thử sandbox. Tenant trả sớm đúng ranh giới kỳ cá nhân sau một kỳ đã ở dùng Invoice REGULAR của kỳ đó, không tạo EARLY_SETTLEMENT cho kỳ mới 0 ngày.
 
 | Cột | Kiểu | NULL? | Khóa/ngữ nghĩa |
 |---|---|---|---|
 | id | BIGINT IDENTITY | Không | PK |
 | contract_id | BIGINT | Không | FK contracts; xác định người chịu khoản thu và phòng |
-| billing_cycle_item_id | BIGINT | Có | Tham gia FK ghép cùng contract_id tới billing_cycle_items; REGULAR bắt buộc, EARLY_SETTLEMENT có thể NULL. Nhánh Tenant trả sớm đúng biên 10 phải dùng REGULAR item kỳ cũ |
-| billing_period_end_date | DATE | Không | Mốc ngày 10 của kỳ chuẩn; không phải issued_at/due_at/ngày trả thực tế |
+| billing_period_id | BIGINT | Có | Tham gia FK ghép cùng contract_id tới billing_periods; REGULAR bắt buộc, EARLY_SETTLEMENT có thể NULL |
+| billing_period_end_date | DATE | Không | Mốc kết thúc kỳ tính tiền; không phải issued_at/due_at/ngày trả thực tế |
 | invoice_kind | VARCHAR(24) | Không | REGULAR / EARLY_SETTLEMENT |
 | usage_from | DATE | Không | Đầu khoảng sử dụng liên quan |
 | usage_to | DATE | Không | Cuối khoảng sử dụng, không tính ngày này |
@@ -375,17 +353,18 @@ Khoản phải thu đã phát hành, tổng > 0. Thông tin tiền là snapshot;
 | rent_calculation_rule | Điều kiện | Tiền thuê | prorated_days |
 |---|---|---|---|
 | FIRST_PRORATED | REGULAR, kỳ đầu < 14 ngày | Giá / 30 × ngày, HALF_UP cuối | Số ngày > 0 và < 14 |
-| MONTHLY_FULL | REGULAR, kỳ đầu >= 14 hoặc kỳ thường | Giá tháng | NULL |
+| PERIOD_PRORATED | REGULAR, kỳ cuối bị rút ngắn dưới 14 ngày | Giá / 30 × ngày, HALF_UP cuối | Số ngày > 0 và < 14 |
+| MONTHLY_FULL | REGULAR có ít nhất 14 ngày sử dụng | Giá tháng | NULL |
 | TENANT_EARLY_FULL | EARLY_SETTLEMENT, Tenant trả sớm | Nguyên kỳ đang sử dụng | NULL |
 | ADMIN_STOP_PRORATED | EARLY_SETTLEMENT, Admin ngừng cung cấp | Giá / 30 × ngày thực tế | Số ngày >= 0 |
 
 Ràng buộc và ý nghĩa:
 
 - UNIQUE (contract_id, billing_period_end_date), không đưa invoice_kind vào khóa.
-- Filtered UNIQUE billing_cycle_item_id khi khác NULL. FK ghép (billing_cycle_item_id, contract_id) bảo đảm dòng chuẩn bị cùng Contract; Service kiểm tra kỳ của dòng = billing_period_end_date.
-- Mốc kỳ ngày 10; usage_from <= usage_to <= billing_period_end_date; Service kiểm tra khoảng nằm trong kỳ chuẩn và trong thời gian hợp đồng. Không cấm tuyệt đối khoảng 0 ngày vì kết thúc cùng ngày có thể phát sinh tiền theo chính sách hoặc điện nước.
+- Filtered UNIQUE billing_period_id khi khác NULL. FK ghép (billing_period_id, contract_id) bảo đảm dòng kỳ thuộc cùng Contract; Service kiểm tra kỳ của dòng = billing_period_end_date.
+- Kỳ neo theo ngày bắt đầu Contract; usage_from <= usage_to <= billing_period_end_date. Ngày 29–31 được chốt vào ngày cuối tháng khi tháng đó ngắn hơn. Không cấm tuyệt đối khoảng 0 ngày ở quyết toán sớm.
 - Tiền thuê kỳ, điện và nước không âm; total_amount = rent + electricity + water và > 0; monthly_rent_snapshot > 0. `rent_amount = 0` vẫn hợp lệ khi quy tắc theo ngày cho ra 0 hoặc khoản cần thu không gồm tiền thuê; tổng 0 được ghi NO_CHARGE ở nghĩa vụ thay vì tạo Invoice.
-- REGULAR bắt buộc item; FIRST_PRORATED/MONTHLY_FULL chỉ đi với REGULAR; hai quy tắc kết thúc sớm **ngoài ngoại lệ Tenant biên ngày 10** chỉ đi với EARLY_SETTLEMENT. Tenant trả sớm đúng ngày 10 sau kỳ đã sử dụng không tạo Invoice mới cho kỳ 0 ngày; REGULAR kỳ cũ giữ công thức đã phát hành hoặc được phát hành sau khi chốt đủ điện nước.
+- REGULAR bắt buộc BillingPeriod; FIRST_PRORATED/PERIOD_PRORATED/MONTHLY_FULL chỉ đi với REGULAR; hai quy tắc quyết toán sớm chỉ đi với EARLY_SETTLEMENT. Tenant trả đúng ranh giới kỳ cá nhân sau kỳ đã sử dụng không tạo hóa đơn 0 ngày; REGULAR kỳ cũ được phát hành một lần.
 - due_at bằng issued_at + 48 giờ; không thay theo Notification hoặc lúc Scheduler chạy.
 - PAID có paid_at và payment_method. CASH bắt buộc confirmed_by_user_id là Admin. BANK_TRANSFER có thể do Admin xác nhận trực tiếp hoặc do Return VNPAY đã xác minh; khi có mã giao dịch gateway, payment_reference được lưu và confirmed_by_user_id có thể NULL. Admin đối chiếu callback muộn/thất lạc cũng ghi BANK_TRANSFER. SANDBOX chỉ là giá trị legacy để đọc Invoice cũ. Nếu Invoice đã PAID, không ghi đè paid_at/method/reference/confirmed_by; hai khoản tiền thực tế xử lý ngoài hệ thống.
 - UNPAID/OVERDUE có paid_at/payment_method/payment_reference/confirmed_by NULL. Dấu callback bất thường nằm ở log phục vụ đối chiếu, không điền vào các field xác nhận thành công trước khi được xử lý.
@@ -445,36 +424,32 @@ Filtered UNIQUE (event_key, recipient_user_id) khi event_key khác NULL. Ví d�
 | Application | PENDING → APPROVED / REJECTED / WITHDRAWN |
 | Contract | SCHEDULED → ACTIVE → ENDED; SCHEDULED → CANCELLED trước ngày bắt đầu |
 | Room | AVAILABLE → RENTED khi giữ; RENTED → AVAILABLE khi kết thúc thường hoặc → INACTIVE qua workflow đóng; INACTIVE chỉ Admin mở lại |
-| BillingCycle | PENDING_INPUT → COMPLETED, kể cả có nghĩa vụ NO_CHARGE |
-| BillingCycleItem | PENDING → INVOICED / NO_CHARGE |
+| BillingPeriod | PENDING → INVOICED / NO_CHARGE theo từng Contract |
 | Invoice | UNPAID → PAID hoặc OVERDUE; OVERDUE → PAID qua Admin xác nhận CASH/BANK_TRANSFER đã nhận đủ hoặc đối chiếu giao dịch VNPAY đã xác minh và lưu BANK_TRANSFER |
 | Issue | OPEN → IN_PROGRESS → RESOLVED |
 | Notification | UNREAD → READ |
 
 CHECK chỉ kiểm tra trạng thái hiện tại; các đường chuyển, quyền và điều kiện liên bảng do Service/transaction bảo đảm. ENDED không kéo Invoice thành PAID; COMPLETED không có nghĩa đã thu xong; EARLY_SETTLEMENT không phải trạng thái Contract.
 
-### 5.2. Khoảng sử dụng khác với mốc kỳ
+### 5.2. Khoảng sử dụng theo từng Contract
 
-- Kỳ 10/11 là [10/10, 10/11), không lấy mốc trước + 30 ngày.
-- Bắt đầu 01/11, thu 10/11: [01/11, 10/11) = 9 ngày. Giá 3.000.000 → thuê 900.000 trước điện nước.
-- Giá 2.000.000, 7 ngày: HALF_UP(2.000.000 × 7 / 30) = 466.667. Không làm tròn đơn giá ngày trước.
-- Kết thúc sớm 04/11: usage_to = 04/11 nhưng billing_period_end_date = 10/11; phát hành ngay 04/11. Tenant trả sớm thu nguyên kỳ; Admin stop dùng số ngày thực tế.
-- Tenant trả sớm 10/12 sau một khoảng đã ở: mốc kỳ cũ = 10/12, không tạo tiền thuê kỳ [10/12, 10/01). Nghĩa vụ kỳ cũ là REGULAR (hoặc NO_CHARGE trên item), không tạo EARLY_SETTLEMENT thứ hai hay tính lại tiền thuê nguyên kỳ.
-- Trường hợp ACTIVE bắt đầu và kết thúc cùng ngày: không tự coi là hủy SCHEDULED. Tenant trả sớm vẫn áp dụng nguyên kỳ; Admin stop dùng 0 ngày và điện nước. Nếu ngày đó là ngày 10 thì kỳ gắn với thời điểm bắt đầu là kỳ kết thúc ngày 10 tháng sau; quy tắc không thu kỳ mới khi trả ở biên áp dụng cho hợp đồng đã ở trước biên đó.
+- Ngày bắt đầu Contract là mốc kỳ cá nhân. Contract bắt đầu ngày 18/10 có kỳ đầu `[18/10, 18/11)`; Admin chỉ phát hành kỳ đã kết thúc.
+- Contract bắt đầu ngày 29, 30 hoặc 31 chốt kỳ vào ngày cuối tháng kế tiếp nếu tháng đó không có ngày tương ứng; kỳ tiếp theo quay lại ngày neo gốc.
+- Nếu Contract kết thúc trước mốc kỳ kế tiếp, kỳ cuối dừng tại ngày kết thúc. Khoảng sử dụng luôn là `[usage_from, usage_to)`, không tính ngày trả phòng.
+- Kỳ REGULAR dưới 14 ngày (kỳ đầu ngắn hoặc kỳ cuối bị rút ngắn) dùng giá thuê / 30 × số ngày, HALF_UP tiền cuối; từ 14 ngày trở lên dùng giá tháng Contract. Giá Room hiện tại không áp lên Contract cũ.
+- Tenant kết thúc đúng ranh giới kỳ cá nhân sau khi dùng kỳ trước: kỳ REGULAR cũ được phát hành một lần, không tính thêm một kỳ 0 ngày. Tenant kết thúc giữa kỳ áp dụng quy tắc quyết toán sớm hiện có.
 
 M06 phải trả rõ khoảng sử dụng, mốc kỳ, reason, quy tắc và tiền; không chỉ trả một total không giải thích được. Các kỳ trước chưa lập/thu vẫn tồn tại độc lập; một quyết toán cuối không miễn mọi kỳ cũ.
 
 ### 5.3. Không phát hành Invoice tổng 0 nhưng không mất nghĩa vụ
 
-**Định kỳ:** chốt đủ điện nước, M05 tính rent_amount. Nếu cả ba khoản bằng 0, lưu item.NO_CHARGE và processed_at. Kỳ hoàn tất khi mọi item là INVOICED hoặc NO_CHARGE. Không tạo Invoice PAID giả 0 đồng.
+Khi Admin chốt một kỳ, M05 lưu BillingPeriod với rent_amount, tiền điện/nước, người nhập, thời điểm xử lý và kết quả INVOICED hoặc NO_CHARGE. Tổng bằng 0 không tạo Invoice; trạng thái NO_CHARGE ngăn phát hành lặp.
 
-**Kết thúc sớm ngoài ngoại lệ Tenant biên ngày 10:** coordinator khóa Contract; M06 tính, M05 kiểm tra nghĩa vụ cùng mốc kỳ và trả INVOICED + ID hoặc NO_CHARGE + ID NULL. M04 lưu final_billing_period_end_date/final_settlement_result/settled_at cùng giao dịch kết thúc. NO_CHARGE nghĩa là cả ba khoản đã xác nhận bằng 0, không phải thiếu dữ liệu nhập.
+Kết thúc sớm giữa kỳ: coordinator khóa Contract; M06 tính, M05 kiểm tra nghĩa vụ cùng mốc kỳ và trả INVOICED + ID hoặc NO_CHARGE + ID NULL. M04 lưu final_billing_period_end_date/final_settlement_result/settled_at cùng giao dịch kết thúc.
 
-**Tenant trả sớm đúng biên ngày 10 sau kỳ đã sử dụng:** M04 chuyển ENDED với lý do TENANT_EARLY_EXIT nhưng không ghi dấu `final_*`/`settled_at`; M05 xử lý REGULAR item kỳ cũ. Nếu kỳ cũ chưa phát hành, M04/Room có thể hoàn tất kết thúc trước; nghĩa vụ vẫn còn và Admin phải chốt đủ điện nước để M05 phát hành một lần từ item (hoặc NO_CHARGE khi tổng 0). Nếu đã phát hành, giữ nguyên Invoice và điện nước đã chốt; sai sót sau phát hành xử lý ngoài hệ thống. Không tạo item/Invoice của kỳ mới 0 ngày chỉ vì thao tác kết thúc.
+Tenant trả đúng ranh giới kỳ cá nhân sau kỳ đã sử dụng: M04 kết thúc Contract nhưng không ghi dấu quyết toán sớm; M05 tiếp tục xử lý kỳ REGULAR cũ nếu chưa phát hành. Nếu đã phát hành, giữ nguyên Invoice và tiền điện nước đã chốt. Không tạo kỳ mới 0 ngày.
 
-Khi tạo kỳ định kỳ, kiểm tra Invoice và dấu quyết toán sớm theo đúng Contract + mốc kỳ; nghĩa vụ đã giải quyết được bỏ qua, không loại toàn bộ Contract khỏi các kỳ cũ. Nếu item đã được tạo trước khi quyết toán, M05 hoàn tất item tương ứng theo kết quả; Invoice dương liên kết item đó. Việc kiểm tra/lưu cần cùng cơ chế khóa Contract để hai workflow không chạy vượt nhau.
-
-Không tạo BillingCycle tương lai chỉ để lưu quyết toán sớm, tránh khóa giao diện Admin trước ngày thu. M04 chỉ giữ dấu kết quả do M05 trả; mọi dữ liệu tiền/Invoice vẫn do M05 ghi.
+M05 khóa nghĩa vụ theo Contract và mốc kỳ khi phát hành. UNIQUE (contract_id, billing_period_end_date) trên BillingPeriod và Invoice là lớp chống trùng cuối; callback hoặc thao tác Admin chạy lại không được ghi đè dữ liệu đã chốt.
 
 ## 6. PK, FK, UNIQUE, CHECK và index
 
@@ -489,16 +464,15 @@ Không tạo BillingCycle tương lai chỉ để lưu quyết toán sớm, trá
 | contracts | application_id | Chỉ khác NULL |
 | contracts | room_id | Một filtered unique index chung cho SCHEDULED và ACTIVE |
 | contract_co_occupants | contract_id, identity_document_no | Toàn bảng; chống cùng CCCD lặp trong một Contract |
-| billing_cycles | collection_date | Toàn bảng |
-| billing_cycle_items | billing_cycle_id, contract_id | Toàn bảng |
-| billing_cycle_items | id, contract_id | Hỗ trợ FK ghép Invoice |
+| billing_periods | contract_id, billing_period_end_date | Toàn bảng |
+| billing_periods | id, contract_id | Hỗ trợ FK ghép Invoice |
 | invoices | contract_id, billing_period_end_date | Toàn bảng, kể cả PAID; không thêm invoice_kind vào khóa |
-| invoices | billing_cycle_item_id | Chỉ khác NULL |
+| invoices | billing_period_id | Chỉ khác NULL |
 | notifications | event_key, recipient_user_id | Chỉ event_key khác NULL |
 
 SQL Server dùng unique filtered index cho các điều kiện trên; UNIQUE đơn cột nullable thông thường không thay được index lọc vì chỉ cho một NULL. Không dùng computed occupancy flag làm filter khi chưa kiểm tra hỗ trợ SQL Server. Không tách hai index giữ phòng theo từng status vì vẫn lọt một SCHEDULED và một ACTIVE. JPA mapping Room–Contract và status không thay thế index này; `ddl-auto=validate` cũng không xác nhận sự tồn tại của filtered index, nên phải kiểm tra bằng SQL Server thật.
 
-Tất cả FK trong từ điển phải được khai báo. Invoice có FK contract_id riêng và FK ghép (billing_cycle_item_id, contract_id) → billing_cycle_items(id, contract_id); item NULL được phép cho quyết toán sớm. Không dùng FK vòng Application ↔ Contract: chỉ Contract giữ application_id, yêu cầu APPROVED có Contract do transaction bảo đảm.
+Tất cả FK trong từ điển phải được khai báo. Invoice có FK contract_id riêng và FK ghép (billing_period_id, contract_id) → billing_periods(id, contract_id); period NULL được phép cho quyết toán sớm. Không dùng FK vòng Application ↔ Contract: chỉ Contract giữ application_id, yêu cầu APPROVED có Contract do transaction bảo đảm.
 
 ### 6.2. CHECK và Service
 
@@ -507,11 +481,11 @@ Tất cả FK trong từ điển phải được khai báo. Invoice có FK contr
 - Các field văn bản bắt buộc phải chặn chuỗi trống/khoảng trắng ở validation, không chỉ NOT NULL.
 - Không dùng CHECK dựa vào giờ hiện tại để thay Scheduler: dữ liệu không tự đổi khi thời gian trôi qua.
 - Service kiểm tra role, chủ sở hữu, giới hạn start_date hôm nay đến +10, ngày kết thúc sớm bằng hôm nay UTC+7, số người, trạng thái Contract khi sửa người ở cùng, khớp đơn–hợp đồng, khớp kỳ–Invoice, quy tắc tính tiền và tính bất biến sau phát hành. Giá Contract phải sao giá Room hiện hành lúc tạo; Room chỉ đổi giá khi không có SCHEDULED/ACTIVE, kiểm tra cùng transaction/khóa.
-- Kết quả NO_CHARGE/INVOICED giữa Contract, item và Invoice là toàn vẹn liên bảng; phải được coordinator/M05 bảo vệ bằng transaction, không chỉ các CHECK riêng lẻ. Riêng Tenant trả sớm đúng biên có `final_*` NULL nhưng vẫn cần REGULAR item/Invoice kỳ cũ được xử lý đúng một lần.
+- Kết quả NO_CHARGE/INVOICED giữa Contract, BillingPeriod và Invoice là toàn vẹn liên bảng; phải được coordinator/M05 bảo vệ bằng transaction, không chỉ các CHECK riêng lẻ. Tenant trả đúng ranh giới kỳ có `final_*` NULL nhưng vẫn cần REGULAR BillingPeriod/Invoice kỳ cũ được xử lý đúng một lần.
 
 ### 6.3. Index đọc dự kiến
 
-Ngoài index duy nhất, cân nhắc index trên Contract(tenant_id), Contract(status, start_date), Contract(status, planned_end_date), Application(status, requested_start_date), Application(room_id, status), Invoice(status, due_at), Invoice(contract_id, issued_at), Issue(reporter_id, created_at), Notification(recipient_user_id, status, created_at), BillingCycle(status, collection_date). Tránh tạo trùng index đã được khóa duy nhất bao phủ; chọn INCLUDE/thứ tự cụ thể sau khi có query thật.
+Ngoài index duy nhất, cân nhắc index trên Contract(tenant_id), Contract(status, start_date), Contract(status, planned_end_date), Application(status, requested_start_date), Application(room_id, status), Invoice(status, due_at), Invoice(contract_id, issued_at), BillingPeriod(contract_id, billing_period_end_date), Issue(reporter_id, created_at), Notification(recipient_user_id, status, created_at). Tránh tạo trùng index đã được khóa duy nhất bao phủ; chọn INCLUDE/thứ tự cụ thể sau khi có query thật.
 
 ## 7. Giao dịch và chống cạnh tranh
 
@@ -523,9 +497,9 @@ Ngoài index duy nhất, cân nhắc index trên Contract(tenant_id), Contract(s
 | Hủy SCHEDULED | CANCELLED và Room AVAILABLE/INACTIVE | M04 + M02 |
 | Kích hoạt/hết hạn | Chuyển Contract có điều kiện, đồng bộ Room đúng hợp đồng; giữ khả năng truy nghĩa vụ cuối | M04 + M02, phối hợp đọc M05 |
 | Lưu điện nước | Lưu dữ liệu nhập bền vững trước phát hành | M05 |
-| Phát hành kỳ | Chốt tập nghĩa vụ và dữ liệu, tạo Invoice/NO_CHARGE, cập nhật item và COMPLETED | M05 |
-| Kết thúc sớm ngoài ngoại lệ Tenant biên 10 | Kết quả quyết toán/Invoice, dấu quyết toán Contract, ENDED, giải phóng/INACTIVE | M06 tính; M05, M04, M02 ghi |
-| Tenant kết thúc sớm đúng biên 10 | ENDED/Room giải phóng; REGULAR item/Invoice kỳ cũ xử lý một lần; không dấu quyết toán sớm/EARLY_SETTLEMENT | M04, M02; M05 phát hành REGULAR khi đủ điện nước |
+| Phát hành kỳ | Chốt điện nước và phát hành một kỳ của một Contract, hoặc ghi NO_CHARGE | M05 |
+| Kết thúc sớm giữa kỳ | Kết quả quyết toán/Invoice, dấu quyết toán Contract, ENDED, giải phóng/INACTIVE | M06 tính; M05, M04, M02 ghi |
+| Tenant kết thúc đúng ranh giới kỳ | ENDED/Room giải phóng; REGULAR kỳ vừa dùng xử lý một lần; không tạo EARLY_SETTLEMENT 0 ngày | M04, M02; M05 phát hành REGULAR nếu kỳ chưa xử lý |
 | Thanh toán/quá hạn | Kiểm tra lại status/due, cập nhật nguyên tử status và thông tin xác nhận | Chỉ M05 |
 | Notification thủ công | Một thao tác lưu các bản cho người nhận; chỉ báo thành công sau khi lưu | M06 |
 
@@ -544,23 +518,21 @@ Callback VNPAY chỉ dùng dữ liệu đã xác minh ở server, so khớp Invo
 | Kiểm tra đơn quá ngày | PENDING, requested_start_date < ngày UTC+7 hiện tại | Chỉ đổi đơn còn PENDING; giữ dấu xử lý cũ |
 | Kích hoạt Contract | SCHEDULED đến hạn, không phụ thuộc khách nhận phòng | Cập nhật cùng Contract, Room vẫn RENTED; không tự hủy no-show |
 | Hết hạn Contract | ACTIVE đến planned_end_date | ENDED và giải phóng đúng phòng, không bỏ nghĩa vụ cuối |
-| Tạo kỳ | collection_date duy nhất | Đọc kỳ đã có |
-| Tạo item | cycle + contract duy nhất, kiểm tra kết quả quyết toán | Không thêm lại dòng/không reset dữ liệu nhập |
-| Phát hành | contract + billing_period_end_date duy nhất | Dùng kết quả phù hợp đã có; khác dữ liệu thì báo xung đột |
+| Phát hành kỳ cá nhân | Contract + ngày kết thúc kỳ duy nhất | Chỉ xử lý kỳ chưa chốt; lỗi giữa chừng rollback cả BillingPeriod/Invoice |
 | Quá hạn | UNPAID, now >= due_at | Không ghi đè PAID |
 | Notification | event_key + recipient_user_id | Không tạo bản trùng |
 
 Scheduler tìm những mốc đã đến hạn nhưng chưa xử lý, không chỉ ngày = hôm nay; phải chạy bù khi server khởi động lại. Nếu trạng thái Contract trễ lịch, đồng bộ vòng đời theo thứ tự trước khi dùng nó để phân loại.
 
-Tập nghĩa vụ định kỳ dựa trên khoảng thuê giao với kỳ, Contract không CANCELLED, Invoice/dấu quyết toán chưa xử lý; không chỉ lọc ACTIVE hoặc Room RENTED hiện tại. Contract ENDED ngày 10 vẫn có kỳ cuối. Room có người thuê mới không làm mất nghĩa vụ người cũ. Dữ liệu đủ để chạy bù kỳ cũ mà không chỉnh ngày thực tế.
+Admin chỉ thấy kỳ tiếp theo đã kết thúc của mỗi Contract đủ điều kiện. Mỗi lần phát hành tiến kỳ riêng theo ngày bắt đầu thuê; kỳ đã có Invoice hoặc NO_CHARGE không xuất hiện lại. Hợp đồng ENDED tự nhiên hoặc Tenant kết thúc đúng ranh giới kỳ vẫn có thể còn kỳ REGULAR cuối cần chốt. Room có người thuê mới không làm mất nghĩa vụ của Contract cũ.
 
-### 8.1. Tenant trả sớm đúng biên ngày 10 — ngoại lệ đã chốt
+### 8.1. Tenant kết thúc đúng ranh giới kỳ cá nhân
 
-Điều kiện: Contract ACTIVE, Tenant chủ động kết thúc **trước** `planned_end_date`, `effective_end_date` bằng ngày nghiệp vụ hiện tại UTC+7 và là ngày 10, Contract đã sử dụng ít nhất một ngày của kỳ vừa kết thúc, chưa dùng ngày nào của kỳ mới. Khi đó ngày 10 là cuối khoảng `[usage_from, usage_to)` của kỳ cũ; không có tiền thuê kỳ mới. Invoice REGULAR cùng `contract_id + billing_period_end_date` xử lý kỳ cũ, kể cả kỳ đầu < 14 ngày. Không áp lại `TENANT_EARLY_FULL`, không tạo EARLY_SETTLEMENT, không sửa Invoice đã phát hành.
+Điều kiện: Contract ACTIVE, Tenant chủ động kết thúc trước `planned_end_date`, ngày kết thúc bằng một mốc kỳ tính từ `start_date`, kỳ vừa kết thúc đã có ít nhất một ngày sử dụng, và chưa sử dụng ngày nào của kỳ tiếp theo. Khi đó không tính tiền kỳ mới; kỳ REGULAR cũ được xử lý một lần bằng `contract_id + billing_period_end_date`. Không áp lại `TENANT_EARLY_FULL`, không tạo EARLY_SETTLEMENT 0 ngày, không sửa Invoice đã phát hành.
 
-Nếu REGULAR chưa phát hành, M05 giữ/tạo BillingCycleItem kỳ cũ, Admin nhập/chốt điện nước của đúng Contract, rồi phát hành REGULAR hoặc ghi NO_CHARGE **một lần**; Contract có thể đã ENDED và Room đã giải phóng. Nếu REGULAR đã phát hành, các khoản điện nước đã chốt trước phát hành; giữ nguyên Invoice. Thiếu/sai tiền phát hiện sau phát hành đi theo chính sách làm việc trực tiếp ngoài hệ thống, không tạo Invoice bù. M05 vẫn truy ra nghĩa vụ kỳ cũ của Contract ENDED.
+Nếu REGULAR chưa phát hành, M05 giữ/tạo BillingPeriod kỳ cũ và Admin nhập/chốt điện nước cho đúng Contract sau khi kỳ kết thúc. Nếu đã phát hành, giữ nguyên Invoice. M04/Room có thể hoàn tất ENDED/giải phóng trước khi Admin phát hành khoản REGULAR còn thiếu; nghĩa vụ kỳ cũ vẫn được truy ra.
 
-Nếu một nhánh **không thuộc ngoại lệ trên** gặp Invoice cùng khóa kỳ đã phát hành, M05 chỉ coi idempotent khi khoản tiền/khoảng/căn cứ tính khớp; khác thì báo xung đột, không ghi đè hoặc tạo Invoice thứ hai. Khóa và thứ tự xử lý chung giữa M04/M05 phải ngăn hai luồng quyết toán/phát hành vượt nhau.
+Mọi nhánh gặp Invoice cùng khóa kỳ đã phát hành đều dừng để tránh thu trùng. Khóa và thứ tự xử lý chung giữa M04/M05 phải ngăn quyết toán và phát hành cùng kỳ vượt nhau.
 
 ## 9. Module ownership và giao tiếp
 
@@ -570,7 +542,7 @@ Nếu một nhánh **không thuộc ngoại lệ trên** gặp Invoice cùng kh�
 | M02 | rooms | Tự hủy Contract/phát hành Invoice để đóng phòng |
 | M03 | rental_applications | Tự ghi Contract/Room, APPROVED trước khi tạo/giữ thành công |
 | M04 | contracts, contract_co_occupants | Ghi InvoiceRepository hoặc tự tính lại quyết toán M06 |
-| M05 | billing_cycles, billing_cycle_items, invoices | Đổi Contract/Room hoặc trực tiếp ghi Notification |
+| M05 | billing_periods, invoices | Đổi Contract/Room hoặc trực tiếp ghi Notification |
 | M06 | notifications | Ghi InvoiceRepository; mọi thu thủ công/quá hạn/quyết toán qua M05 |
 
 issueFinalInvoice trả kết quả có result = INVOICED/NO_CHARGE, contractId, billingPeriodEndDate và invoiceId nullable theo result. M04 lưu dấu kết quả sớm; M06 tính công thức, không sở hữu bản ghi Invoice. Với INVOICED trả lại kết quả cũ phải đối chiếu dữ liệu, không coi bất kỳ duplicate key nào cũng thành công.
@@ -587,11 +559,11 @@ DTO/port chính: CurrentUser/UserSummary; RoomQuery/RoomOccupancyCommand; Applic
 | Gửi/rút/duyệt đơn | Một PENDING/cặp, đúng người, đúng ngày; APPROVED gắn Contract hợp lệ |
 | Trực tiếp | Contract application_id NULL, đủ CCCD, giá sao Room lúc tạo, reject cạnh tranh |
 | SCHEDULED/ACTIVE/CANCELLED/ENDED | Các mốc NULL/khác NULL đúng; SCHEDULED tự ACTIVE dù no-show; Room đồng bộ, không hai hợp đồng giữ phòng, không gia hạn |
-| Kỳ ngày 10 | Kỳ đầu đúng ngày, không dùng giá Room, không bỏ Contract vừa ENDED |
-| Nhập điện nước | NULL khác 0; đủ toàn bộ trước phát hành; dữ liệu còn khi phát hành lỗi |
+| Kỳ cá nhân | Kỳ tính theo ngày bắt đầu Contract, không dùng giá Room, không bỏ Contract vừa ENDED |
+| Nhập điện nước | NULL khác 0; từng Contract phát hành độc lập; dữ liệu chờ được giữ khi phát hành lỗi |
 | Thanh toán sandbox | Đúng chủ, UNPAID và chưa due; xác minh, PAID một lần, thất bại không ghi paid fields |
 | Thu thủ công/quá hạn | M06 qua M05; due cố định; chưa trả vẫn truy được sau ENDED |
-| Kết thúc sớm | Chỉ ngày hiện tại UTC+7; Tenant trong kỳ nguyên kỳ, Admin theo ngày; Tenant trả đúng biên 10 dùng REGULAR kỳ cũ; Room cùng nhất quán |
+| Kết thúc sớm | Chỉ ngày hiện tại UTC+7; Tenant trong kỳ nguyên kỳ, Admin theo ngày; Tenant trả đúng ranh giới dùng REGULAR kỳ cũ; Room cùng nhất quán |
 | Tổng 0 | Có dấu xử lý, không Invoice 0 đồng, không lặp vô hạn |
 | Sai tiền đã phát hành | Không sửa tiền/giả PAID; công nợ có thể khác thỏa thuận ngoài đời |
 | Issue | Đúng Contract ACTIVE lúc tạo; Admin xử lý Issue cũ đến RESOLVED sau Contract ENDED, Tenant xem lịch sử |
@@ -606,8 +578,8 @@ DTO/port chính: CurrentUser/UserSummary; RoomQuery/RoomOccupancyCommand; Applic
 - Chưa có outbox; retry Notification có giới hạn. Chọn số lần/thời gian, log và cơ chế quan sát khi triển khai. Không ghi bí mật gateway/mật khẩu vào log.
 - Chọn sandbox và đặc tả xử lý callback/đối chiếu muộn. Không tự suy đoán tên cổng hay định dạng chữ ký/tham chiếu.
 - Mapping timestamp UTC và collation `CS_AS` của email phải được xác minh trên SQL Server nhóm dùng. CCCD chỉ trim/không rỗng và giữ số 0 đầu; chưa thêm quy tắc định dạng số chữ số hoặc UNIQUE toàn hệ thống. Thứ tự khóa transaction của các workflow được chốt khi tích hợp module; Foundation không thêm cột version.
-- Ngoại lệ biên ngày 10 ở mục 8.1 đã chốt; cần kiểm thử luồng REGULAR phát hành trước/sau thao tác kết thúc và điện nước đúng một lần khi tích hợp.
+- Ranh giới kỳ cá nhân ở mục 8.1; cần kiểm thử luồng REGULAR phát hành trước/sau thao tác kết thúc và điện nước đúng một lần khi tích hợp.
 - Không thêm thời hạn thuê tối thiểu ngoài `planned_end_date > start_date`; giá niêm yết và giá Contract phải > 0. `area_m2` có thể NULL nhưng nếu có thì > 0; `floor_number` bắt buộc > 0. `rent_amount` của một kỳ có thể bằng 0, và nghĩa vụ tổng 0 vẫn dùng NO_CHARGE.
 - Chưa chọn nơi lưu ảnh đại diện, cách upload hoặc gateway và phương thức xác minh giao dịch; không suy đoán các quyết định kỹ thuật này. Không có email/OTP, Issue attachment, gallery hay password reset trong 40 UC bắt buộc.
 - Xóa dữ liệu xét theo Entity và FK cụ thể; không áp dụng `NO ACTION` như một quy tắc nghiệp vụ chung, nhưng không xóa vật lý làm mất Contract/Invoice lịch sử hoặc thay workflow kết thúc/INACTIVE.
-- Foundation đã có `schema.sql`, `seed_admin.sql` và 10 Entity/Enum theo owner; mỗi thành viên tạo database `RentalApartmentDev` bằng script rồi cấu hình `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` trên máy riêng. Tiếp tục kiểm thử constraint bằng dữ liệu hợp lệ/sai, đặc tả interface/coordinator và tích hợp dần workflow; không tự thêm bảng hoặc đổi nghiệp vụ.
+- Foundation đã có `schema.sql`, `seed_admin.sql` và 9 Entity/Enum theo owner; mỗi thành viên tạo database `RentalApartmentDev` bằng script rồi cấu hình `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` trên máy riêng. Tiếp tục kiểm thử constraint bằng dữ liệu hợp lệ/sai, đặc tả interface/coordinator và tích hợp dần workflow; không tự thêm bảng hoặc đổi nghiệp vụ.

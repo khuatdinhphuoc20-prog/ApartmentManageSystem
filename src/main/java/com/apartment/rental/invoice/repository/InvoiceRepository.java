@@ -14,7 +14,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
-    boolean existsByBillingCycleItem_Id(Long billingCycleItemId);
+    boolean existsByBillingPeriod_Id(Long billingPeriodId);
 
     boolean existsByContract_IdAndBillingPeriodEndDate(Long contractId, LocalDate billingPeriodEndDate);
 

@@ -49,10 +49,6 @@ public class CustomerCashPaymentRequestService {
         }
 
         List<User> admins = userRepository.findAllByRole(Role.ADMIN);
-        if (admins.isEmpty()) {
-            throw new IllegalStateException("Hiện chưa có người quản lý để nhận yêu cầu. Vui lòng thử lại sau.");
-        }
-
         String eventKey = EVENT_PREFIX + invoiceId + ":" + tenant.getId();
         String title = "Khách thuê đề nghị thanh toán tiền mặt";
         String total = NumberFormat.getIntegerInstance(Locale.forLanguageTag("vi-VN"))

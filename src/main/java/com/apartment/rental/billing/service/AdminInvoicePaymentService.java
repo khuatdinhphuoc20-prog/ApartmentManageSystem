@@ -3,7 +3,7 @@ package com.apartment.rental.billing.service;
 import com.apartment.rental.account.entity.Role;
 import com.apartment.rental.account.entity.User;
 import com.apartment.rental.account.repository.UserRepository;
-import com.apartment.rental.billing.dto.OutstandingInvoiceDto;
+import com.apartment.rental.invoice.dto.OutstandingInvoiceDto;
 import com.apartment.rental.invoice.entity.Invoice;
 import com.apartment.rental.invoice.entity.InvoiceStatus;
 import com.apartment.rental.invoice.entity.PaymentMethod;

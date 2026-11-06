@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<aside th:fragment="sidebar(active)" sec:authorize="hasRole('USER')" id="tenantNav"
+       class="admin-sidebar customer-sidebar offcanvas-lg offcanvas-start"
+       tabindex="-1" aria-labelledby="tenantBrand">
+    <div class="sidebar-panel d-flex flex-column flex-grow-1">
+        <div class="d-flex align-items-center justify-content-between p-4">
+            <a id="tenantBrand" class="text-reset text-decoration-none" th:href="@{/}">
+                <span th:replace="~{fragments/shared :: brand}"></span>
+            </a>
+            <button class="btn-close btn-close-white d-lg-none" type="button" data-bs-dismiss="offcanvas"
+                    data-bs-target="#tenantNav" aria-label="Đóng điều hướng"></button>
+        </div>
+        <nav class="nav flex-column gap-1 px-3 pb-4" aria-label="Góc người thuê">
+            <div class="nav-section">Khám phá</div>
+            <th:block th:replace="~{fragments/customer-sidebar :: item('rooms', 'Phòng cho thuê', 'building', @{/#rooms}, ${active})}"></th:block>
+            <div class="nav-section mt-3">Góc người thuê</div>
+            <th:block th:replace="~{fragments/customer-sidebar :: item('profile', 'Hồ sơ của tôi', 'people', ${null}, ${active})}"></th:block>
+            <th:block th:replace="~{fragments/customer-sidebar :: item('applications', 'Đơn thuê của tôi', 'clipboard', ${null}, ${active})}"></th:block>
+            <th:block th:replace="~{fragments/customer-sidebar :: item('contracts', 'Hợp đồng của tôi', 'file', ${null}, ${active})}"></th:block>
+            <th:block th:replace="~{fragments/customer-sidebar :: item('invoices', 'Hóa đơn & thanh toán', 'receipt', @{/customer/invoices}, ${active})}"></th:block>
+            <th:block th:replace="~{fragments/customer-sidebar :: item('issues', 'Phản ánh của tôi', 'message', ${null}, ${active})}"></th:block>
+            <th:block th:replace="~{fragments/customer-sidebar :: item('notifications', 'Thông báo của tôi', 'bell', ${null}, ${active})}"></th:block>
+        </nav>
+    </div>
+</aside>
+
+<th:block th:fragment="item(key, label, icon, url, active)">
+    <a th:if="${url != null}" th:href="${url}" class="nav-link d-flex align-items-center gap-3"
+       th:classappend="${key == active ? 'active' : ''}"
+       th:attr="aria-current=${key == active ? 'page' : null}">
+        <svg th:replace="~{fragments/shared :: icon(${icon})}"></svg><span th:text="${label}"></span>
+    </a>
+    <span th:if="${url == null}" class="nav-link pending d-flex align-items-center gap-3" aria-disabled="true">
+        <svg th:replace="~{fragments/shared :: icon(${icon})}"></svg><span th:text="${label}"></span>
+        <small class="ms-auto">Chờ</small>
+    </span>
+</th:block>
+</body>
+</html>

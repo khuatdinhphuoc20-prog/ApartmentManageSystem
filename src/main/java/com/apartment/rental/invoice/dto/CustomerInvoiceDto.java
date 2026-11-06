@@ -1,4 +1,4 @@
-package com.apartment.rental.billing.dto;
+package com.apartment.rental.invoice.dto;
 
 import com.apartment.rental.contract.entity.ContractStatus;
 import com.apartment.rental.invoice.entity.InvoiceKind;
@@ -56,6 +56,7 @@ public record CustomerInvoiceDto(
     public String getRentCalculationRuleLabel() {
         return switch (rentCalculationRule) {
             case FIRST_PRORATED -> "Theo số ngày sử dụng trong tháng đầu";
+            case PERIOD_PRORATED -> "Theo số ngày của kỳ sử dụng rút ngắn";
             case MONTHLY_FULL -> "Trọn tháng";
             case TENANT_EARLY_FULL -> "Trọn tháng khi kết thúc hợp đồng sớm";
             case ADMIN_STOP_PRORATED -> "Theo số ngày ở đến ngày kết thúc hợp đồng";

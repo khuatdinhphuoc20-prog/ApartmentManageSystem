@@ -23,13 +23,4 @@ public class LoginController {
         return "login";
     }
 
-    @GetMapping("/")
-    public String home(org.springframework.security.core.Authentication authentication, Model model) {
-        model.addAttribute("email", authentication.getName());
-        model.addAttribute("role", authentication.getAuthorities().stream()
-            .map(authority -> authority.getAuthority().replace("ROLE_", ""))
-            .findFirst()
-            .orElse("USER"));
-        return "home";
-    }
 }

@@ -1,4 +1,4 @@
-package com.apartment.rental.billing.dto;
+package com.apartment.rental.invoice.dto;
 
 import com.apartment.rental.invoice.entity.InvoiceStatus;
 import java.math.BigDecimal;

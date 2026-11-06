@@ -1,7 +1,7 @@
-package com.apartment.rental.billing.controller;
+package com.apartment.rental.invoice.controller;
 
-import com.apartment.rental.billing.dto.CustomerInvoicePageDto;
-import com.apartment.rental.billing.service.CustomerInvoiceService;
+import com.apartment.rental.invoice.dto.CustomerInvoicePageDto;
+import com.apartment.rental.invoice.service.CustomerInvoiceService;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;

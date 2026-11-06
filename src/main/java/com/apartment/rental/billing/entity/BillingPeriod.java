@@ -15,6 +15,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -26,12 +27,19 @@ import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+/** One contract's monthly billing period and the utility amounts entered for it. */
 @Getter
 @Setter
 @Entity
-@Table(name = "billing_cycle_items")
+@Table(
+    name = "billing_periods",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uq_billing_periods_contract_end", columnNames = {"contract_id", "billing_period_end_date"}),
+        @UniqueConstraint(name = "uq_billing_periods_id_contract", columnNames = {"id", "contract_id"})
+    }
+)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class BillingCycleItem {
+public class BillingPeriod {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -58,24 +66,15 @@ public class BillingCycleItem {
         updatedAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     }
 
-    public static BillingCycleItem pending(
-        BillingCycle cycle,
-        Contract contract,
-        LocalDate usageFrom,
-        LocalDate usageTo
-    ) {
-        BillingCycleItem item = new BillingCycleItem();
-        item.setBillingCycle(cycle);
-        item.setContract(contract);
-        item.setUsageFrom(usageFrom);
-        item.setUsageTo(usageTo);
-        item.setProcessingResult(BillingCycleItemResult.PENDING);
-        return item;
+    public static BillingPeriod pending(Contract contract, LocalDate usageFrom, LocalDate usageTo, LocalDate billingPeriodEndDate) {
+        BillingPeriod period = new BillingPeriod();
+        period.setContract(contract);
+        period.setUsageFrom(usageFrom);
+        period.setUsageTo(usageTo);
+        period.setBillingPeriodEndDate(billingPeriodEndDate);
+        period.setProcessingResult(BillingPeriodResult.PENDING);
+        return period;
     }
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "billing_cycle_id", nullable = false)
-    private BillingCycle billingCycle;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "contract_id", nullable = false)
@@ -86,6 +85,9 @@ public class BillingCycleItem {
 
     @Column(name = "usage_to", nullable = false)
     private LocalDate usageTo;
+
+    @Column(name = "billing_period_end_date", nullable = false)
+    private LocalDate billingPeriodEndDate;
 
     @Column(name = "electricity_amount", nullable = true, precision = 19, scale = 0)
     private BigDecimal electricityAmount;
@@ -106,10 +108,9 @@ public class BillingCycleItem {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "processing_result", nullable = false, length = 16)
-    private BillingCycleItemResult processingResult;
+    private BillingPeriodResult processingResult;
 
     @JdbcTypeCode(SqlTypes.TIMESTAMP)
     @Column(name = "processed_at", nullable = true, columnDefinition = "datetime2(3)")
     private Instant processedAt;
 }
-
