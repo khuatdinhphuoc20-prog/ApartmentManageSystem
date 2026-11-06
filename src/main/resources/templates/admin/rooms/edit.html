@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/admin :: layout('Chỉnh sửa phòng ' + ${room.roomCode}, 'rooms', ~{::section})}">
+<body>
+<section>
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-1">Chỉnh sửa phòng <span th:text="${room.roomCode}"></span></h1>
+            <p class="text-secondary mb-0">
+                Trạng thái hiện tại: 
+                <span th:if="${room.status.name() == 'AVAILABLE'}" class="badge bg-success">Còn trống</span>
+                <span th:if="${room.status.name() == 'RENTED'}" class="badge bg-warning text-dark">Đang cho thuê</span>
+                <span th:if="${room.status.name() == 'INACTIVE'}" class="badge bg-secondary">Tạm ngưng</span>
+            </p>
+        </div>
+        <a th:href="@{/admin/rooms}" class="btn btn-outline-secondary">Quay lại danh sách</a>
+    </div>
+
+    <!-- Thông báo lỗi nếu có -->
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <form th:action="@{/admin/rooms/{id}/edit(id=${room.id})}" method="post">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="roomCode" class="form-label fw-semibold">Mã phòng <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="roomCode" name="roomCode" th:value="${room.roomCode}" required>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label for="floorNumber" class="form-label fw-semibold">Tầng <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="floorNumber" name="floorNumber" th:value="${room.floorNumber}" min="1" required>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label for="capacity" class="form-label fw-semibold">Sức chứa (người) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="capacity" name="capacity" th:value="${room.capacity}" min="1" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="listedMonthlyRent" class="form-label fw-semibold">Giá thuê niêm yết (VNĐ/tháng) <span class="text-danger">*</span></label>
+                        <!-- Nếu phòng đang RENTED thì KHÓA ô giá theo quy tắc BR-ROOM-08 -->
+                        <input type="number" class="form-control" id="listedMonthlyRent" name="listedMonthlyRent"
+                               th:value="${room.listedMonthlyRent}" min="1" step="any"
+                               th:readonly="${room.status.name() == 'RENTED'}"
+                               th:classappend="${room.status.name() == 'RENTED'} ? 'bg-light' : ''" required>
+                        <small th:if="${room.status.name() == 'RENTED'}" class="text-danger">
+                            * Phòng đang có hợp đồng hoạt động, không được phép thay đổi giá chào thuê.
+                        </small>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="areaM2" class="form-label fw-semibold">Diện tích (m²)</label>
+                        <input type="number" class="form-control" id="areaM2" name="areaM2" th:value="${room.areaM2}" step="any" min="1">
+                    </div>
+
+                    <div class="col-12">
+                        <label for="coverImagePath" class="form-label fw-semibold">Đường dẫn ảnh đại diện <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="coverImagePath" name="coverImagePath" th:value="${room.coverImagePath}" required>
+                    </div>
+
+                    <div class="col-12">
+                        <label for="description" class="form-label fw-semibold">Mô tả tiện ích phòng</label>
+                        <textarea class="form-control" id="description" name="description" rows="4" th:text="${room.description}"></textarea>
+                    </div>
+
+                    <div class="col-12 text-end mt-4">
+                        <a th:href="@{/admin/rooms}" class="btn btn-secondary me-2">Hủy</a>
+                        <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+</body>
+</html>

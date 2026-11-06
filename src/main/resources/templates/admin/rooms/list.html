@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/admin :: layout('Quản lý phòng trọ', 'rooms', ~{::section})}">
+<body>
+<section>
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 mb-1">Danh sách phòng trọ</h1>
+            <p class="text-secondary mb-0">Quản lý trạng thái, giá niêm yết và thông tin phòng.</p>
+        </div>
+        <a th:href="@{/admin/rooms/create}" class="btn btn-primary">+ Thêm phòng mới</a>
+    </div>
+
+    <!-- Thông báo kết quả -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert" th:text="${errorMessage}"></div>
+
+    <!-- Thanh tìm kiếm và bộ lọc -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-3">
+            <form th:action="@{/admin/rooms}" method="get" class="row g-2 align-items-center">
+                <div class="col-md-5">
+                    <input type="text" name="keyword" class="form-control" placeholder="Tìm theo mã phòng hoặc mô tả..." th:value="${keyword}">
+                </div>
+                <div class="col-md-4">
+                    <select name="status" class="form-select">
+                        <option value="">-- Tất cả trạng thái --</option>
+                        <option th:each="st : ${statuses}" th:value="${st}" th:text="${st}" th:selected="${st == selectedStatus}"></option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-secondary w-100">Tìm kiếm</button>
+                    <a th:href="@{/admin/rooms}" class="btn btn-outline-secondary">Xóa</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bảng dữ liệu phòng -->
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Mã phòng</th>
+                        <th>Tầng</th>
+                        <th>Diện tích</th>
+                        <th>Sức chứa</th>
+                        <th>Giá niêm yết / tháng</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${#lists.isEmpty(rooms)}">
+                        <td colspan="7" class="text-center py-4 text-secondary">Không tìm thấy phòng nào.</td>
+                    </tr>
+                    <tr th:each="r : ${rooms}">
+                        <td class="fw-bold" th:text="${r.roomCode}"></td>
+                        <td th:text="|Tầng ${r.floorNumber}|"></td>
+                        <td th:text="${r.areaM2 != null ? r.areaM2 + ' m²' : 'Chưa cập nhật'}"></td>
+                        <td th:text="|${r.capacity} người|"></td>
+                        <td class="fw-semibold text-primary" th:text="${#numbers.formatDecimal(r.listedMonthlyRent, 0, 'POINT', 0, 'POINT')} + ' đ'"></td>
+                        <td>
+                            <span th:if="${r.status.name() == 'AVAILABLE'}" class="badge bg-success">Còn trống</span>
+                            <span th:if="${r.status.name() == 'RENTED'}" class="badge bg-warning text-dark">Đang thuê</span>
+                            <span th:if="${r.status.name() == 'INACTIVE'}" class="badge bg-secondary">Tạm ngưng</span>
+                        </td>
+                        <td class="text-end">
+                            <a th:href="@{/admin/rooms/{id}/edit(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1">Sửa</a>
+                            
+                            <!-- Nút Toggle đóng/mở phòng trống (UC08) -->
+                            <form th:if="${r.status.name() != 'RENTED'}" th:action="@{/admin/rooms/{id}/toggle-status(id=${r.id})}" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm"
+                                        th:classappend="${r.status.name() == 'AVAILABLE'} ? 'btn-outline-danger' : 'btn-outline-success'"
+                                        th:text="${r.status.name() == 'AVAILABLE'} ? 'Đóng phòng' : 'Mở phòng'"></button>
+                            </form>
+                            <span th:if="${r.status.name() == 'RENTED'}" class="badge bg-light text-muted">Đang có người ở</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+</body>
+</html>
