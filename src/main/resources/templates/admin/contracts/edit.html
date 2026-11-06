@@ -1,0 +1,293 @@
+
+<!DOCTYPE html>
+<html lang="vi"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/admin :: layout(
+          'Chỉnh sửa hợp đồng',
+          'contracts',
+          ~{::#contract-content}
+      )}">
+
+<body>
+<section id="contract-content">
+
+    <div class="container-fluid">
+
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold mb-1">Chỉnh sửa hợp đồng</h4>
+                <p class="text-muted mb-0">
+                    Cập nhật thông tin người ở cùng trong hợp đồng.
+                </p>
+            </div>
+
+            <a th:href="@{/admin/contracts/{id}(id=${contract.id})}"
+               class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i>
+                Quay lại
+            </a>
+        </div>
+
+        <!-- Messages -->
+        <div th:if="${errorMessage != null}"
+             class="alert alert-danger"
+             th:text="${errorMessage}">
+        </div>
+
+        <div th:if="${successMessage != null}"
+             class="alert alert-success"
+             th:text="${successMessage}">
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+
+                <!-- Tenant -->
+                <h6 class="fw-bold mb-3">Thông tin khách thuê</h6>
+
+                <div class="mb-4">
+                    <label class="form-label">Khách thuê</label>
+                    <input type="text"
+                           class="form-control"
+                           th:value="${contract.tenantName}"
+                           readonly>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Room -->
+                <h6 class="fw-bold mb-3">Thông tin phòng</h6>
+
+                <div class="mb-4">
+                    <label class="form-label">Phòng thuê</label>
+                    <input type="text"
+                           class="form-control"
+                           th:value="${contract.roomCode}"
+                           readonly>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Contract Duration -->
+                <h6 class="fw-bold mb-3">Thời hạn hợp đồng</h6>
+
+                <div class="row">
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Ngày bắt đầu</label>
+                        <input type="date"
+                               class="form-control"
+                               th:value="${contract.startDate}"
+                               readonly>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Ngày kết thúc dự kiến</label>
+                        <input type="date"
+                               class="form-control"
+                               th:value="${contract.plannedEndDate}"
+                               readonly>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Tiền thuê hàng tháng</label>
+                        <input type="text"
+                               class="form-control"
+                               th:value="${#numbers.formatDecimal(
+                                   contract.agreedMonthlyRent,
+                                   0, 'COMMA', 0, 'POINT'
+                               ) + ' VNĐ'}"
+                               readonly>
+                    </div>
+
+                </div>
+
+                <div class="alert alert-info small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Thông tin khách thuê, phòng, thời hạn và giá thuê
+                    đã được chốt khi tạo hợp đồng và không thể chỉnh sửa.
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Co-occupants -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-1">Thông tin người ở cùng</h6>
+                        <p class="text-muted small mb-0">
+                            Có thể thêm, chỉnh sửa hoặc xóa người ở cùng.
+                            Sức chứa bao gồm cả khách thuê đại diện.
+                        </p>
+                    </div>
+                    <span class="badge bg-primary"
+                          th:text="${#lists.size(coOccupants)} + ' người'">
+                    </span>
+                </div>
+
+                <!-- Existing co-occupants -->
+                <div th:each="person, stat : ${coOccupants}"
+                     class="card bg-light border-0 mb-3">
+
+                    <div class="card-body">
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-semibold mb-0"
+                                th:text="|Người ở cùng ${stat.count}|">
+                            </h6>
+
+                            <form th:action="@{/admin/contracts/{contractId}/co-occupants/{coOccupantId}/delete(
+                                      contractId=${contract.id},
+                                      coOccupantId=${person.id}
+                                  )}"
+                                  method="post"
+                                  onsubmit="return confirm('Bạn có chắc muốn xóa người ở cùng này?')">
+
+                                <button type="submit"
+                                        class="btn btn-outline-danger btn-sm">
+                                    <i class="bi bi-trash me-1"></i>
+                                    Xóa
+                                </button>
+                            </form>
+                        </div>
+
+                        <form th:action="@{/admin/contracts/{contractId}/co-occupants/{coOccupantId}(
+                                  contractId=${contract.id},
+                                  coOccupantId=${person.id}
+                              )}"
+                              method="post">
+
+                            <div class="row">
+
+                                <div class="col-md-5 mb-3">
+                                    <label class="form-label">Họ và tên</label>
+                                    <input type="text"
+                                           name="fullName"
+                                           class="form-control"
+                                           maxlength="150"
+                                           required
+                                           th:value="${person.fullName}">
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Số CCCD</label>
+                                    <input type="text"
+                                           name="identityDocumentNo"
+                                           class="form-control"
+                                           maxlength="30"
+                                           required
+                                           th:value="${person.identityDocumentNo}">
+                                </div>
+
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Số điện thoại</label>
+                                    <input type="text"
+                                           name="phone"
+                                           class="form-control"
+                                           maxlength="20"
+                                           th:value="${person.phone}">
+                                </div>
+
+                            </div>
+
+                            <div class="d-flex justify-content-end">
+                                <button type="submit"
+                                        class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-check-lg me-1"></i>
+                                    Cập nhật
+                                </button>
+                            </div>
+
+                        </form>
+                    </div>
+                </div>
+
+                <div th:if="${#lists.isEmpty(coOccupants)}"
+                     class="alert alert-secondary text-center">
+                    Chưa có người ở cùng.
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Add co-occupant -->
+                <h6 class="fw-bold mb-3">
+                    <i class="bi bi-person-plus me-2"></i>
+                    Thêm người ở cùng
+                </h6>
+
+                <form th:action="@{/admin/contracts/{contractId}/co-occupants(
+                          contractId=${contract.id}
+                      )}"
+                      method="post">
+
+                    <div class="card bg-light border-0">
+                        <div class="card-body">
+
+                            <div class="row">
+
+                                <div class="col-md-5 mb-3">
+                                    <label class="form-label">
+                                        Họ và tên
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text"
+                                           name="fullName"
+                                           class="form-control"
+                                           maxlength="150"
+                                           placeholder="Nhập họ và tên"
+                                           required>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">
+                                        Số CCCD
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text"
+                                           name="identityDocumentNo"
+                                           class="form-control"
+                                           maxlength="30"
+                                           placeholder="Nhập số CCCD"
+                                           required>
+                                </div>
+
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Số điện thoại</label>
+                                    <input type="text"
+                                           name="phone"
+                                           class="form-control"
+                                           maxlength="20"
+                                           placeholder="Nhập số điện thoại">
+                                </div>
+
+                            </div>
+
+                            <div class="d-flex justify-content-end">
+                                <button type="submit"
+                                        class="btn btn-primary">
+                                    <i class="bi bi-plus-lg me-1"></i>
+                                    Thêm người ở cùng
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </form>
+
+                <!-- Actions -->
+                <div class="d-flex justify-content-end mt-4">
+                    <a th:href="@{/admin/contracts/{id}(id=${contract.id})}"
+                       class="btn btn-light">
+                        Hoàn tất
+                    </a>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+</section>
+</body>
+</html>
