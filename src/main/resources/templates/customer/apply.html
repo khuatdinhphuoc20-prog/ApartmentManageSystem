@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/customer :: layout('Đăng ký thuê phòng', 'rooms', ~{::article})}">
+<body>
+<article class="container py-4 py-lg-5" style="max-width: 760px;">
+    <div class="mb-4">
+        <a th:href="@{/customer/applications}" class="text-decoration-none small text-secondary">
+            &larr; Quay lại danh sách đơn của tôi
+        </a>
+        <h1 class="h3 fw-semibold mt-2 mb-1" th:text="|Đăng ký thuê Phòng ${room.roomCode}|"></h1>
+        <p class="text-secondary mb-0">Điền thời gian bạn muốn thuê để gửi đơn lên ban quản lý xét duyệt.</p>
+    </div>
+
+    <!-- Thông báo lỗi nghiệp vụ nếu có -->
+    <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+
+    <!-- Card thông tin tóm tắt phòng -->
+    <div class="card p-3 p-md-4 mb-4 bg-light border-0">
+        <h2 class="h6 text-muted text-uppercase mb-3">Thông tin phòng trọ</h2>
+        <div class="row g-3 small">
+            <div class="col-4">
+                <span class="text-secondary d-block">Tầng:</span>
+                <strong class="fs-6" th:text="${room.floorNumber}"></strong>
+            </div>
+            <div class="col-4">
+                <span class="text-secondary d-block">Sức chứa:</span>
+                <strong class="fs-6" th:text="|Tối đa ${room.capacity} người|"></strong>
+            </div>
+            <div class="col-4">
+                <span class="text-secondary d-block">Giá chào thuê:</span>
+                <strong class="fs-6 text-primary" th:text="|${#numbers.formatDecimal(room.listedMonthlyRent, 0, 'POINT', 0, 'COMMA')} đ|"></strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form nộp đơn -->
+    <div class="card p-4">
+        <form th:action="@{/customer/applications/apply}" th:object="${applyRequest}" method="post">
+            <input type="hidden" th:field="*{roomId}">
+
+            <!-- Ngày bắt đầu thuê (dd/MM/yyyy) -->
+            <div class="mb-4">
+                <label for="requestedStartDate" class="form-label fw-semibold">Ngày bắt đầu thuê mong muốn <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="requestedStartDate" name="requestedStartDate"
+                       th:value="${#temporals.format(applyRequest.requestedStartDate, 'yyyy-MM-dd')}"
+                       th:min="${#temporals.format(today, 'yyyy-MM-dd')}"
+                       th:max="${#temporals.format(maxStartDate, 'yyyy-MM-dd')}" required>
+                <div class="form-text small">Quy định: Bạn có thể chọn ngày nhận phòng từ hôm nay đến tối đa 10 ngày tới.</div>
+            </div>
+
+            <!-- Cách 1: Chọn gói thời hạn thuê -->
+            <div class="mb-3">
+                <label for="durationMonths" class="form-label fw-semibold">Thời hạn thuê dự kiến</label>
+                <select class="form-select" id="durationMonths" th:field="*{durationMonths}">
+                    <option value="1">1 tháng (Kỳ thu tiếp theo)</option>
+                    <option value="3">3 tháng (1 quý)</option>
+                    <option value="6">6 tháng (Nửa năm)</option>
+                    <option value="12">12 tháng (1 năm)</option>
+                </select>
+                <div class="form-text small">Hệ thống sẽ tự động tính ngày kết thúc chốt vào <strong>ngày 10</strong> của tháng tương ứng theo chu kỳ tòa nhà.</div>
+            </div>
+
+            <!-- Cách 2: Tùy chọn Tháng & Năm kết thúc cụ thể (BR-CON-02) -->
+            <div class="p-3 bg-light rounded-3 mb-4">
+                <div class="fw-semibold small mb-2 text-secondary">Hoặc chỉ định tháng & năm kết thúc cụ thể:</div>
+                <div class="row g-2 align-items-center">
+                    <div class="col-6">
+                        <label class="form-label small text-muted mb-1">Tháng kết thúc</label>
+                        <select class="form-select form-select-sm" th:field="*{endMonth}">
+                            <option value="">-- Mặc định theo gói trên --</option>
+                            <option th:each="m : ${#numbers.sequence(1, 12)}" th:value="${m}" th:text="|Tháng ${m}|"></option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small text-muted mb-1">Năm kết thúc</label>
+                        <select class="form-select form-select-sm" th:field="*{endYear}">
+                            <option th:value="${currentYear}" th:text="${currentYear}"></option>
+                            <option th:value="${currentYear + 1}" th:text="${currentYear + 1}"></option>
+                            <option th:value="${currentYear + 2}" th:text="${currentYear + 2}"></option>
+                        </select>
+
+                    </div>
+                </div>
+                <div class="small text-muted mt-2">
+                    <svg class="text-info me-1" style="width: 14px; height: 14px;" aria-hidden="true"><use th:href="@{/images/icons.svg#clipboard}"></use></svg>
+                    Hợp đồng luôn chốt vào <strong>ngày 10</strong> của tháng bạn chọn để đối soát điện nước.
+                </div>
+            </div>
+
+            <!-- Lưu ý quan trọng (BR-ROOM-08) -->
+            <div class="alert alert-info small mb-4">
+                <strong>Lưu ý:</strong> Giá thuê chính thức sẽ được áp dụng theo giá niêm yết của phòng tại thời điểm hợp đồng được Admin phê duyệt.
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a th:href="@{/customer/applications}" class="btn btn-outline-secondary">Hủy bỏ</a>
+                <button type="submit" class="btn btn-primary px-4">Gửi đơn đăng ký</button>
+            </div>
+        </form>
+    </div>
+</article>
+</body>
+</html>
