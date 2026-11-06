@@ -1,0 +1,381 @@
+
+<!DOCTYPE html>
+<html lang="vi"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/admin :: layout(
+          'Chi tiết hợp đồng',
+          'contracts',
+          ~{::#contract-detail}
+      )}">
+
+<body>
+<div id="contract-detail">
+
+    <div class="container-fluid">
+
+        <!-- Success message -->
+        <div th:if="${successMessage}"
+             class="alert alert-success alert-dismissible fade show"
+             role="alert">
+            <span th:text="${successMessage}"></span>
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Error message -->
+        <div th:if="${errorMessage}"
+             class="alert alert-danger alert-dismissible fade show"
+             role="alert">
+            <span th:text="${errorMessage}"></span>
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Header -->
+        <div class="d-flex justify-content-between
+                    align-items-center mb-4">
+
+            <div>
+                <h3 class="fw-bold mb-1">Chi tiết hợp đồng</h3>
+                <p class="text-muted mb-0">
+                    Thông tin chi tiết hợp đồng thuê phòng
+                </p>
+            </div>
+
+            <a th:href="@{/admin/contracts}"
+               class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i>
+                Quay lại
+            </a>
+        </div>
+
+        <!-- Contract information -->
+        <div class="card border-0 shadow-sm mb-4">
+
+            <div class="card-header bg-white py-3
+                        d-flex justify-content-between
+                        align-items-center">
+
+                <h5 class="mb-0 fw-semibold">
+                    Thông tin hợp đồng
+                </h5>
+
+                <span th:switch="${contract.status.name()}">
+
+                    <span th:case="'ACTIVE'"
+                          class="badge bg-success">
+                        Đang hiệu lực
+                    </span>
+
+                    <span th:case="'SCHEDULED'"
+                          class="badge bg-warning text-dark">
+                        Chờ hiệu lực
+                    </span>
+
+                    <span th:case="'ENDED'"
+                          class="badge bg-secondary">
+                        Đã kết thúc
+                    </span>
+
+                    <span th:case="'CANCELLED'"
+                          class="badge bg-danger">
+                        Đã hủy
+                    </span>
+
+                </span>
+            </div>
+
+            <div class="card-body">
+
+                <div class="row g-4">
+
+                    <div class="col-md-4">
+                        <label class="text-muted small">
+                            Mã hợp đồng
+                        </label>
+                        <div class="fw-semibold"
+                             th:text="${contract.id}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="text-muted small">
+                            Phòng thuê
+                        </label>
+                        <div class="fw-semibold"
+                             th:text="${contract.roomCode}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="text-muted small">
+                            Tiền thuê hàng tháng
+                        </label>
+                        <div class="fw-semibold text-primary"
+                             th:text="${#numbers.formatDecimal(
+                                 contract.agreedMonthlyRent,
+                                 0, 'COMMA', 0, 'POINT'
+                             ) + ' đ'}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="text-muted small">
+                            Ngày bắt đầu
+                        </label>
+                        <div th:text="${#temporals.format(
+                            contract.startDate, 'dd/MM/yyyy'
+                        )}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="text-muted small">
+                            Ngày kết thúc dự kiến
+                        </label>
+                        <div th:text="${#temporals.format(
+                            contract.plannedEndDate, 'dd/MM/yyyy'
+                        )}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4"
+                         th:if="${contract.effectiveEndDate != null}">
+                        <label class="text-muted small">
+                            Ngày kết thúc thực tế
+                        </label>
+                        <div th:text="${#temporals.format(
+                            contract.effectiveEndDate, 'dd/MM/yyyy'
+                        )}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4"
+                         th:if="${contract.applicationId != null}">
+                        <label class="text-muted small">
+                            Mã đơn đăng ký
+                        </label>
+                        <div th:text="${contract.applicationId}">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <!-- Cancel Scheduled Contract -->
+        <div th:if="${contract.status.name() == 'SCHEDULED'}"
+             class="card border-danger shadow-sm mt-4 mb-4">
+
+            <div class="card-header bg-danger text-white py-3">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-x-circle me-2"></i>
+                    Hủy hợp đồng
+                </h5>
+            </div>
+
+            <div class="card-body">
+
+                <p class="text-muted mb-3">
+                    Chỉ có thể hủy hợp đồng trước ngày bắt đầu.
+                    Sau khi hủy, phòng sẽ được giải phóng.
+                </p>
+
+                <form th:if="${contract.status.name() == 'SCHEDULED'}"
+                      th:action="@{/admin/contracts/{id}/cancel(id=${contract.id})}"
+                      method="post"
+                      onsubmit="return confirm('Bạn có chắc chắn muốn hủy hợp đồng này?')">
+
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-circle me-1"></i>
+                        Hủy hợp đồng
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tenant information -->
+        <div class="card border-0 shadow-sm mb-4">
+
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-person me-2"></i>
+                    Thông tin người thuê
+                </h5>
+            </div>
+
+            <div class="card-body">
+                <div class="row g-4">
+
+                    <div class="col-md-4">
+                        <label class="text-muted small">
+                            Họ và tên
+                        </label>
+                        <div class="fw-semibold"
+                             th:text="${contract.tenantName}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="text-muted small">
+                            Số CCCD
+                        </label>
+                        <div th:text="${contract.identityDocumentNo}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="text-muted small">
+                            Số điện thoại
+                        </label>
+                        <div th:text="${contract.phone}">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Co-occupants -->
+        <div class="card border-0 shadow-sm mb-4">
+
+            <div class="card-header bg-white py-3
+                        d-flex justify-content-between
+                        align-items-center">
+
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-people me-2"></i>
+                    Danh sách người ở cùng
+                </h5>
+
+                <span class="badge bg-primary"
+                      th:text="${#lists.size(contract.coOccupants)}
+                               + ' người'">
+                </span>
+            </div>
+
+            <div class="card-body p-0">
+
+                <div class="table-responsive">
+
+                    <table class="table table-hover
+                                  align-middle mb-0">
+
+                        <thead class="table-light">
+                        <tr>
+                            <th class="text-center">STT</th>
+                            <th>Họ và tên</th>
+                            <th>CCCD</th>
+                            <th>Số điện thoại</th>
+                        </tr>
+                        </thead>
+
+                        <tbody>
+
+                        <tr th:each="person, stat :
+                                    ${contract.coOccupants}">
+
+                            <td class="text-center"
+                                th:text="${stat.count}">
+                            </td>
+
+                            <td th:text="${person.fullName}">
+                            </td>
+
+                            <td th:text="${person.identityDocumentNo}">
+                            </td>
+
+                            <td th:text="${person.phone}">
+                            </td>
+
+                        </tr>
+
+                        <tr th:if="${#lists.isEmpty(
+                                      contract.coOccupants)}">
+                            <td colspan="4"
+                                class="text-center text-muted py-4">
+                                Chưa có người ở cùng.
+                            </td>
+                        </tr>
+
+                        </tbody>
+                    </table>
+                    <div class="card-footer bg-white border-0 d-flex justify-content-end p-3">
+                        <a th:if="${contract.status.name() != 'ENDED'
+            and contract.status.name() != 'CANCELLED'}"
+                           th:href="@{/admin/contracts/{id}/edit(id=${contract.id})}"
+                           class="btn btn-primary btn-sm px-3">
+                            <i class="bi bi-pencil-square me-1"></i>
+                            Chỉnh sửa hợp đồng
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Termination information -->
+        <div class="card border-0 shadow-sm mb-4"
+             th:if="${contract.status.name() == 'ENDED'
+                     or contract.status.name() == 'CANCELLED'}">
+
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-semibold">
+                    Thông tin kết thúc hợp đồng
+                </h5>
+            </div>
+
+            <div class="card-body">
+
+                <div class="row g-4">
+
+                    <div class="col-md-4"
+                         th:if="${contract.endReason != null}">
+                        <label class="text-muted small">
+                            Lý do kết thúc
+                        </label>
+                        <div th:text="${contract.endReason}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-8"
+                         th:if="${contract.closingNote != null}">
+                        <label class="text-muted small">
+                            Ghi chú
+                        </label>
+                        <div th:text="${contract.closingNote}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4"
+                         th:if="${contract.finalBillingPeriodEndDate != null}">
+                        <label class="text-muted small">
+                            Kết thúc kỳ thanh toán cuối
+                        </label>
+                        <div th:text="${#temporals.format(
+                            contract.finalBillingPeriodEndDate,
+                            'dd/MM/yyyy'
+                        )}">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4"
+                         th:if="${contract.finalSettlementResult != null}">
+                        <label class="text-muted small">
+                            Kết quả quyết toán
+                        </label>
+                        <div th:text="${contract.finalSettlementResult}">
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+</div>
+</body>
+</html>

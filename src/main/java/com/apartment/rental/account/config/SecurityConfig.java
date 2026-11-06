@@ -45,7 +45,7 @@ public class SecurityConfig {
                     if (isAdmin) {
                         response.sendRedirect("/admin/dashboard");
                     } else if (isCustomer) {
-                        response.sendRedirect("/customer/applications");
+                        response.sendRedirect("/rooms");
                     } else {
                         response.sendRedirect("/rooms");
                     }

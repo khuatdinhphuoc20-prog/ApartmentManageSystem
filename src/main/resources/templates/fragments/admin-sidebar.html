@@ -17,7 +17,7 @@
             <div class="nav-section mt-3">Quản lý cho thuê</div>
             <th:block th:replace="~{fragments/admin-sidebar :: item('rooms', 'Phòng trọ', 'building', ${null})}"></th:block>
             <th:block th:replace="~{fragments/admin-sidebar :: item('applications', 'Đơn thuê', 'clipboard', @{/admin/applications})}"></th:block>
-            <th:block th:replace="~{fragments/admin-sidebar :: item('contracts', 'Hợp đồng', 'file', ${null})}"></th:block>
+            <th:block th:replace="~{fragments/admin-sidebar :: item('contracts', 'Hợp đồng', 'file', @{/admin/contracts})}"></th:block>
             <div class="nav-section mt-3">Vận hành</div>
             <th:block th:replace="~{fragments/admin-sidebar :: item('billing', 'Kỳ thu & hóa đơn', 'receipt', @{/admin/billing})}"></th:block>
             <th:block th:replace="~{fragments/admin-sidebar :: item('collections', 'Thu tiền & công nợ', 'wallet', @{/admin/payment/reconciliation})}"></th:block>

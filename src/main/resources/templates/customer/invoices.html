@@ -9,7 +9,7 @@
             <h1 class="h2 fw-semibold mb-2">Hóa đơn của tôi</h1>
             <p class="text-secondary mb-0">Xin chào <strong th:text="${page.customerName}">Khách thuê</strong>! Đây là hóa đơn thuộc các hợp đồng do bạn đứng tên.</p>
         </div>
-        <a class="btn btn-outline-secondary" th:href="@{/}">Khám phá phòng</a>
+        <a class="btn btn-outline-secondary" th:href="@{/rooms}">Khám phá phòng</a>
     </header>
 
     <div class="alert" role="status" th:if="${paymentMessage != null}"

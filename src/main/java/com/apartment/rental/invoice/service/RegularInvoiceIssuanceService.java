@@ -7,15 +7,16 @@ import com.apartment.rental.billing.dto.BillingPeriodRowDto;
 import com.apartment.rental.billing.entity.BillingPeriod;
 import com.apartment.rental.billing.entity.BillingPeriodResult;
 import com.apartment.rental.billing.repository.BillingPeriodRepository;
-import com.apartment.rental.contract.dto.ContractBillingSnapshotDto;
+import com.apartment.rental.contract.dto.response.ContractBillingResponse;
 import com.apartment.rental.contract.entity.Contract;
-import com.apartment.rental.contract.service.ContractBillingQueryService;
+import com.apartment.rental.contract.service.ContractService;
 import com.apartment.rental.invoice.dto.InvoiceIssuedEvent;
 import com.apartment.rental.invoice.entity.Invoice;
 import com.apartment.rental.invoice.entity.RentCalculationRule;
 import com.apartment.rental.invoice.repository.InvoiceRepository;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -38,7 +39,7 @@ public class RegularInvoiceIssuanceService {
     private final BillingPeriodRepository periodRepository;
     private final InvoiceRepository invoiceRepository;
     private final UserRepository userRepository;
-    private final ContractBillingQueryService contractQuery;
+    private final ContractService contractService;
     private final ApplicationEventPublisher eventPublisher;
     private final EntityManager entityManager;
 
@@ -46,14 +47,14 @@ public class RegularInvoiceIssuanceService {
         BillingPeriodRepository periodRepository,
         InvoiceRepository invoiceRepository,
         UserRepository userRepository,
-        ContractBillingQueryService contractQuery,
+        ContractService contractService,
         ApplicationEventPublisher eventPublisher,
         EntityManager entityManager
     ) {
         this.periodRepository = periodRepository;
         this.invoiceRepository = invoiceRepository;
         this.userRepository = userRepository;
-        this.contractQuery = contractQuery;
+        this.contractService = contractService;
         this.eventPublisher = eventPublisher;
         this.entityManager = entityManager;
     }
@@ -63,7 +64,7 @@ public class RegularInvoiceIssuanceService {
     public List<BillingPeriodRowDto> loadDuePeriods() {
         LocalDate today = LocalDate.now(BUSINESS_ZONE);
         List<BillingPeriodRowDto> rows = new ArrayList<>();
-        for (ContractBillingSnapshotDto contract : contractQuery.findEligibleContractsForRegularBilling(today)) {
+        for (ContractBillingResponse contract : contractService.findEligibleContractsForRegularBilling(today)) {
             DuePeriod duePeriod = findDuePeriod(contract, today);
             if (duePeriod != null) {
                 rows.add(toBillingPeriodRow(contract, duePeriod));
@@ -84,7 +85,7 @@ public class RegularInvoiceIssuanceService {
         validateAmounts(electricityAmount, waterAmount);
 
         LocalDate today = LocalDate.now(BUSINESS_ZONE);
-        ContractBillingSnapshotDto contract = requireEligibleContract(contractId, today);
+        ContractBillingResponse contract = requireEligibleContract(contractId, today);
         DuePeriod duePeriod = requireDuePeriod(contract, today);
         BillingPeriod period = findPendingPeriod(contractId, duePeriod);
         ensureCanIssue(contractId, duePeriod, period);
@@ -124,12 +125,12 @@ public class RegularInvoiceIssuanceService {
         validateAmount(waterAmount, "tiền nước");
     }
 
-    private ContractBillingSnapshotDto requireEligibleContract(Long contractId, LocalDate today) {
-        return contractQuery.lockEligibleContractForBilling(contractId, today)
+    private ContractBillingResponse requireEligibleContract(Long contractId, LocalDate today) {
+        return contractService.lockEligibleContractForBilling(contractId, today)
             .orElseThrow(() -> new IllegalArgumentException("Hợp đồng này hiện không có kỳ thu định kỳ cần phát hành."));
     }
 
-    private DuePeriod requireDuePeriod(ContractBillingSnapshotDto contract, LocalDate today) {
+    private DuePeriod requireDuePeriod(ContractBillingResponse contract, LocalDate today) {
         DuePeriod duePeriod = findDuePeriod(contract, today);
         if (duePeriod == null) {
             throw new IllegalArgumentException("Kỳ tiếp theo chưa đến hạn hoặc hợp đồng đã được quyết toán.");
@@ -177,7 +178,7 @@ public class RegularInvoiceIssuanceService {
 
     private Long createInvoice(
         Long contractId,
-        ContractBillingSnapshotDto contract,
+        ContractBillingResponse contract,
         DuePeriod duePeriod,
         BillingPeriod period,
         RentAmount rent,
@@ -217,7 +218,7 @@ public class RegularInvoiceIssuanceService {
         return savedInvoice.getId();
     }
 
-    private BillingPeriodRowDto toBillingPeriodRow(ContractBillingSnapshotDto contract, DuePeriod duePeriod) {
+    private BillingPeriodRowDto toBillingPeriodRow(ContractBillingResponse contract, DuePeriod duePeriod) {
         BillingPeriod pending = duePeriod.pendingPeriod();
         return new BillingPeriodRowDto(
             contract.contractId(),
@@ -235,7 +236,7 @@ public class RegularInvoiceIssuanceService {
         );
     }
 
-    private DuePeriod findDuePeriod(ContractBillingSnapshotDto contract, LocalDate today) {
+    private DuePeriod findDuePeriod(ContractBillingResponse contract, LocalDate today) {
         BillingPeriod latest = periodRepository
             .findTopByContract_IdOrderByBillingPeriodEndDateDescIdDesc(contract.contractId())
             .orElse(null);
@@ -276,10 +277,22 @@ public class RegularInvoiceIssuanceService {
         return month.atDay(day);
     }
 
-    private RentAmount calculateRent(LocalDate usageFrom, LocalDate usageTo, ContractBillingSnapshotDto contract) {
+    private RentAmount calculateRent(LocalDate usageFrom, LocalDate usageTo, ContractBillingResponse contract) {
         if (!usageTo.isAfter(usageFrom)) {
             throw new IllegalArgumentException("Kỳ sử dụng phải có ít nhất một ngày.");
         }
+
+        long usedDays = ChronoUnit.DAYS.between(usageFrom, usageTo);
+        if (usedDays < 14) {
+            BigDecimal proratedRent = contract.agreedMonthlyRent()
+                .multiply(BigDecimal.valueOf(usedDays))
+                .divide(BigDecimal.valueOf(30), 0, RoundingMode.HALF_UP);
+            RentCalculationRule rule = usageFrom.equals(contract.startDate())
+                ? RentCalculationRule.FIRST_PRORATED
+                : RentCalculationRule.PERIOD_PRORATED;
+            return new RentAmount(proratedRent, rule, Math.toIntExact(usedDays));
+        }
+
         return new RentAmount(contract.agreedMonthlyRent(), RentCalculationRule.MONTHLY_FULL, null);
     }
 

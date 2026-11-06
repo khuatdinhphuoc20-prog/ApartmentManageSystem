@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="vi"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/admin :: layout(
+          'Tạo hợp đồng',
+          'contracts',
+          ~{::#contract-content}
+      )}">
+
+<body>
+<section id="contract-content">
+
+    <div class="container-fluid">
+
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold mb-1">Tạo hợp đồng</h4>
+                <p class="text-muted mb-0">
+                    Tạo hợp đồng thuê phòng trực tiếp cho khách thuê.
+                </p>
+            </div>
+
+            <a th:href="@{/admin/contracts}"
+               class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i>
+                Quay lại
+            </a>
+        </div>
+
+        <!-- Error Message -->
+        <div th:if="${errorMessage != null}"
+             class="alert alert-danger"
+             th:text="${errorMessage}">
+        </div>
+
+        <!-- Contract Form -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <div th:if="${successMessage != null}"
+                     class="alert alert-success"
+                     th:text="${successMessage}">
+                </div>
+                <form th:action="@{/admin/contracts/direct}"
+                      th:object="${directContractRequest}"
+                      method="post">
+
+                    <!-- Tenant -->
+                    <h6 class="fw-bold mb-3">Thông tin khách thuê</h6>
+
+                    <div class="mb-4">
+                        <label for="tenantId" class="form-label">
+                            Khách thuê <span class="text-danger">*</span>
+                        </label>
+
+                        <select id="tenantId"
+                                class="form-select"
+                                th:field="*{tenantId}"
+                                required>
+
+                            <option value="">-- Chọn khách thuê --</option>
+
+                            <option th:each="tenant : ${tenants}"
+                                    th:value="${tenant.id}"
+                                    th:text="${tenant.fullName + ' - ' + tenant.identityDocumentNo}">
+                            </option>
+                        </select>
+
+                        <div class="text-danger small"
+                             th:if="${#fields.hasErrors('tenantId')}"
+                             th:errors="*{tenantId}">
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Room -->
+                    <h6 class="fw-bold mb-3">Thông tin phòng</h6>
+
+                    <div class="mb-4">
+                        <label for="roomId" class="form-label">
+                            Phòng thuê <span class="text-danger">*</span>
+                        </label>
+
+                        <select id="roomId"
+                                class="form-select"
+                                th:field="*{roomId}"
+                                required>
+
+                            <option value="">-- Chọn phòng --</option>
+
+                            <option th:each="room : ${rooms}"
+                                    th:value="${room.id}"
+                                    th:text="${room.roomCode
+                                        + ' - Tầng ' + room.floorNumber
+                                        + ' - ' + #numbers.formatDecimal(room.listedMonthlyRent, 0, 'COMMA', 0, 'POINT') + ' VNĐ/tháng'}">
+                            </option>
+                        </select>
+                        <div class="mt-2">
+                            <button type="submit"
+                                    class="btn btn-outline-primary btn-sm"
+                                    th:formaction="@{/admin/contracts/create/load-capacity}"
+                                    formmethod="post"
+                                    formnovalidate>
+                                <i class="bi bi-arrow-repeat me-1"></i>
+                                Tải sức chứa
+                            </button>
+                        </div>
+
+                        <div class="text-danger small"
+                             th:if="${#fields.hasErrors('roomId')}"
+                             th:errors="*{roomId}">
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Contract Duration -->
+                    <h6 class="fw-bold mb-3">Thời hạn hợp đồng</h6>
+
+                    <div class="row">
+
+                        <div class="col-md-4 mb-3">
+                            <label for="startDate" class="form-label">
+                                Ngày bắt đầu
+                                <span class="text-danger">*</span>
+                            </label>
+
+                            <input type="date"
+                                   id="startDate"
+                                   class="form-control"
+                                   th:field="*{startDate}"
+                                   th:attr="min=${minStartDate},max=${maxStartDate}"
+                                   required>
+
+                            <div class="text-danger small"
+                                 th:if="${#fields.hasErrors('startDate')}"
+                                 th:errors="*{startDate}">
+                            </div>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="endMonth" class="form-label">
+                                Tháng kết thúc
+                                <span class="text-danger">*</span>
+                            </label>
+
+                            <select id="endMonth"
+                                    class="form-select"
+                                    th:field="*{endMonth}"
+                                    required>
+
+                                <option value="">-- Chọn tháng --</option>
+
+                                <option th:each="month : ${#numbers.sequence(1, 12)}"
+                                        th:value="${month}"
+                                        th:text="${month}">
+                                </option>
+                            </select>
+
+                            <div class="text-danger small"
+                                 th:if="${#fields.hasErrors('endMonth')}"
+                                 th:errors="*{endMonth}">
+                            </div>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label for="endYear" class="form-label">
+                                Năm kết thúc
+                                <span class="text-danger">*</span>
+                            </label>
+
+                            <input type="number"
+                                   id="endYear"
+                                   class="form-control"
+                                   th:field="*{endYear}"
+                                   th:attr="min=${minEndYear}"
+                                   required>
+
+                            <div class="text-danger small"
+                                 th:if="${#fields.hasErrors('endYear')}"
+                                 th:errors="*{endYear}">
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Ngày kết thúc hợp đồng được hệ thống tự xác định
+                        là ngày 10 của tháng và năm đã chọn.
+                    </div>
+
+                    <hr class="my-4">
+                    <hr class="my-4">
+
+                    <hr class="my-4">
+
+                    <!-- Co-occupants -->
+                    <h6 class="fw-bold mb-1">Thông tin người ở cùng</h6>
+
+                    <p class="text-muted small mb-3">
+                        Không bắt buộc. Số lượng người ở cùng tối đa được xác định
+                        theo sức chứa phòng, không tính khách thuê đại diện.
+                    </p>
+
+                    <div th:if="${coOccupantSlots != null and coOccupantSlots > 0}">
+
+                        <div th:each="i : ${#numbers.sequence(0, coOccupantSlots - 1)}"
+                             class="card bg-light border-0 mb-3">
+
+                            <div class="card-body">
+
+                                <h6 class="fw-semibold mb-3"
+                                    th:text="|Người ở cùng ${i + 1}|">
+                                </h6>
+
+                                <div class="row">
+
+                                    <div class="col-md-5 mb-3">
+                                        <label class="form-label">Họ và tên</label>
+
+                                        <input type="text"
+                                               class="form-control"
+                                               th:name="|coOccupants[${i}].fullName|"
+                                               maxlength="150"
+                                               placeholder="Nhập họ và tên">
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Số CCCD</label>
+
+                                        <input type="text"
+                                               class="form-control"
+                                               th:name="|coOccupants[${i}].identityDocumentNo|"
+                                               maxlength="30"
+                                               placeholder="Nhập số CCCD">
+                                    </div>
+
+                                    <div class="col-md-3 mb-3">
+                                        <label class="form-label">Số điện thoại</label>
+
+                                        <input type="text"
+                                               class="form-control"
+                                               th:name="|coOccupants[${i}].phone|"
+                                               maxlength="20"
+                                               placeholder="Nhập số điện thoại">
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div th:if="${directContractRequest.roomId != null
+             and coOccupantSlots == 0}"
+                         class="alert alert-info">
+                        Phòng này chỉ có sức chứa 1 người, không còn chỗ cho người ở cùng.
+                    </div>
+
+                    <div th:if="${directContractRequest.roomId == null}"
+                         class="alert alert-secondary">
+                        Vui lòng chọn phòng và bấm Tải sức chứa để hiển thị thông tin người ở cùng.
+                    </div>
+                    <!-- Actions -->
+                    <div class="d-flex justify-content-end gap-2">
+                        <a th:href="@{/admin/contracts}"
+                           class="btn btn-light">
+                            Hủy
+                        </a>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>
+                            Tạo hợp đồng
+                        </button>
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+
+    </div>
+
+</section>
+</body>
+</html>

@@ -13,7 +13,7 @@ public class HomeController {
             return "redirect:/admin/dashboard";
         }
         if (request.isUserInRole("USER")) {
-            return "redirect:/customer/applications";
+            return "redirect:/rooms";
         }
         return "redirect:/rooms";
     }
