@@ -30,7 +30,7 @@ import org.hibernate.type.SqlTypes;
 @Setter
 @Entity
 @Table(name = "rental_applications")
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 public class RentalApplication {
 
     @Id
