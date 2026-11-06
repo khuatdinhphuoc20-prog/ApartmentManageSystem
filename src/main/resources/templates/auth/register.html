@@ -30,7 +30,7 @@
                             <label for="email" class="form-label small fw-semibold">Email</label>
                             <input type="email" id="email" th:field="*{email}"
                                    class="form-control" th:classappend="${#fields.hasErrors('email')} ? 'is-invalid'"
-                                   placeholder="An@example.com">
+                                   placeholder="A@example.com">
                             <div class="invalid-feedback" th:errors="*{email}"></div>
                         </div>
 
@@ -38,24 +38,24 @@
                             <label for="fullName" class="form-label small fw-semibold">Họ và tên</label>
                             <input type="text" id="fullName" th:field="*{fullName}"
                                    class="form-control" th:classappend="${#fields.hasErrors('fullName')} ? 'is-invalid'"
-                                   placeholder="Nguyễn Văn An">
+                                   placeholder="Nguyễn Văn A">
                             <div class="invalid-feedback" th:errors="*{fullName}"></div>
                         </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-12 col-sm-6">
                                 <label for="phone" class="form-label small fw-semibold">Số điện thoại</label>
-                                <input type="text" id="phone" th:field="*{phone}"
+                                <input type="text" id="phone" th:field="*{phone}" maxlength="10"
                                        class="form-control" th:classappend="${#fields.hasErrors('phone')} ? 'is-invalid'"
-                                       placeholder="0901234567">
+                                       placeholder="VD: 0901234567">
                                 <div class="invalid-feedback" th:errors="*{phone}"></div>
                             </div>
 
                             <div class="col-12 col-sm-6">
-                                <label for="identityDocumentNo" class="form-label small fw-semibold">Số CCCD/CMND</label>
-                                <input type="text" id="identityDocumentNo" th:field="*{identityDocumentNo}"
+                                <label for="identityDocumentNo" class="form-label small fw-semibold">Số CCCD</label>
+                                <input type="text" id="identityDocumentNo" th:field="*{identityDocumentNo}" maxlength="12"
                                        class="form-control" th:classappend="${#fields.hasErrors('identityDocumentNo')} ? 'is-invalid'"
-                                       placeholder="001200012345">
+                                       placeholder="VD: 001200012345">
                                 <div class="invalid-feedback" th:errors="*{identityDocumentNo}"></div>
                             </div>
                         </div>

@@ -30,10 +30,10 @@ public class RegisterRequest {
     private String fullName;
 
     @NotBlank(message = "Số điện thoại không được để trống!")
-    @Pattern(regexp = "^\\d{10,15}$", message = "Số điện thoại không hợp lệ (10–15 chữ số)!")
+    @Pattern(regexp = "^\\d{10}$", message = "Số điện thoại phải gồm đúng 10 chữ số!")
     private String phone;
 
     @NotBlank(message = "CCCD/CMND không được để trống!")
-    @Size(max = 30, message = "CCCD/CMND không được vượt quá 30 ký tự!")
+    @Pattern(regexp = "^\\d{12}$", message = "Số CCCD phải gồm đúng 12 chữ số!")
     private String identityDocumentNo;
 }

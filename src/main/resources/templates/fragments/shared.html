@@ -26,7 +26,13 @@
 
 <div th:fragment="account" sec:authorize="isAuthenticated()"
      class="d-flex align-items-center gap-2 gap-sm-3 ms-auto">
-    <span class="d-inline-flex align-items-center gap-2 small fw-semibold">
+    <a sec:authorize="hasRole('USER')" th:href="@{/profile}"
+       class="d-inline-flex align-items-center gap-2 small fw-semibold text-decoration-none text-dark"
+       title="Xem và cập nhật hồ sơ cá nhân">
+        <span class="avatar" aria-hidden="true">TK</span>
+        <span class="d-none d-sm-inline" sec:authentication="name"></span>
+    </a>
+    <span sec:authorize="hasRole('ADMIN')" class="d-inline-flex align-items-center gap-2 small fw-semibold">
         <span class="avatar" aria-hidden="true">TK</span>
         <span class="d-none d-sm-inline" sec:authentication="name"></span>
     </span>
