@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ghi nhận thanh toán | Rental Apartment</title>
+    <style>
+        :root { font-family: Inter, Segoe UI, Arial, sans-serif; color: #172033; background: #f4f6fb; }
+        * { box-sizing: border-box; }
+        body { margin: 0; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 18px max(20px, calc((100vw - 1100px) / 2)); background: #fff; border-bottom: 1px solid #e4e8f0; }
+        a { color: #3458c5; text-decoration: none; }
+        main { width: min(100% - 32px, 1100px); margin: 32px auto 60px; }
+        h1 { margin: 0 0 8px; font-size: 27px; }
+        .muted { color: #69758c; line-height: 1.55; }
+        .notice { padding: 13px 15px; margin: 18px 0; border-radius: 9px; color: #17613b; background: #eaf7ef; }
+        .notice.error { color: #9e2525; background: #fff0f0; }
+        .invoice { padding: 20px; margin-top: 16px; border: 1px solid #e4e8f0; border-radius: 14px; background: #fff; }
+        .top { display: flex; justify-content: space-between; gap: 12px; }
+        .badge { display: inline-block; padding: 6px 10px; border-radius: 99px; color: #805700; background: #fff3d4; font-size: 12px; font-weight: 750; }
+        .badge.overdue { color: #9e2525; background: #fff0f0; }
+        .cash-request-flag { margin: 10px 0 0; padding: 9px 11px; border-radius: 8px; color: #805700; background: #fff8e8; font-size: 13px; font-weight: 700; }
+        form { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 12px; margin-top: 18px; }
+        label { display: grid; gap: 6px; color: #69758c; font-size: 13px; }
+        input, select { min-width: 0; padding: 10px 12px; border: 1px solid #ccd4e3; border-radius: 8px; font: inherit; background: #fff; }
+        .verify { grid-column: 1 / -1; display: flex; align-items: flex-start; color: #172033; }
+        .verify input { min-width: auto; margin: 3px 8px 0 0; }
+        button { width: fit-content; grid-column: 1 / -1; padding: 11px 17px; border: 0; border-radius: 8px; color: #fff; background: #3458c5; font: inherit; font-weight: 700; cursor: pointer; }
+        @media (max-width: 800px) { form { grid-template-columns: repeat(2, minmax(140px, 1fr)); } }
+        @media (max-width: 500px) { form { grid-template-columns: 1fr; } .top { flex-direction: column; } }
+    </style>
+</head>
+<body>
+<header>
+    <strong>Rental Apartment · Admin</strong>
+    <a th:href="@{/admin}">Trang Admin</a>
+</header>
+<main>
+    <h1>Ghi nhận thanh toán</h1>
+    <p class="muted">Chỉ ghi nhận thanh toán sau khi đã nhận đủ tiền. Các giao dịch VNPay thành công sẽ tự động cập nhật hóa đơn.</p>
+    <div class="notice" th:if="${paymentMessage != null}"
+         th:classappend="${paymentError == true ? ' error' : ''}"
+         th:text="${paymentMessage}">Thông báo</div>
+    <p class="muted" th:if="${#lists.isEmpty(invoices)}">Hiện không có hóa đơn cần ghi nhận thanh toán.</p>
+
+    <article class="invoice" th:each="invoice : ${invoices}">
+        <div class="top">
+            <div>
+                <strong th:text="|Hóa đơn #${invoice.invoiceId} · Phòng ${invoice.roomCode}|">Invoice</strong>
+                <div class="muted" th:text="|Người đại diện: ${invoice.tenantName} · Tổng: ${#numbers.formatInteger(invoice.totalAmount, 1, 'COMMA')} đ · Hạn: ${invoice.dueAt}|">Chi tiết</div>
+            </div>
+            <span class="badge" th:classappend="${invoice.status.name() == 'OVERDUE' ? ' overdue' : ''}"
+                  th:text="${invoice.status.name() == 'OVERDUE' ? 'Quá hạn' : 'Chưa thanh toán'}">Chưa thanh toán</span>
+        </div>
+        <p class="cash-request-flag" th:if="${invoice.cashPaymentRequested}">Khách thuê đã yêu cầu Admin thu tiền mặt.</p>
+        <form th:action="@{/admin/payment/reconciliation/{invoiceId}(invoiceId=${invoice.invoiceId})}" method="post">
+            <label>Số tiền đã nhận (đ)
+                <input type="number" name="receivedAmount" min="1" step="1" required th:value="${invoice.totalAmount}">
+            </label>
+            <label>Phương thức
+                <select name="paymentMethod" required>
+                    <option value="" disabled selected>Chọn phương thức</option>
+                    <option th:each="method : ${paymentMethods}" th:value="${method}"
+                            th:text="${method.name() == 'CASH' ? 'Tiền mặt' : 'Chuyển khoản ngân hàng'}">Tiền mặt</option>
+                </select>
+            </label>
+            <label>Mã tham chiếu (nếu có)
+                <input type="text" name="paymentReference" maxlength="128">
+            </label>
+            <label>Thời điểm nhận tiền
+                <input type="datetime-local" name="paidAt" required>
+            </label>
+            <label class="verify">
+                <input type="checkbox" name="receivedInFull" value="true" required>
+                Tôi xác nhận đã thực nhận đủ tổng tiền của hóa đơn này.
+            </label>
+            <button type="submit">Ghi nhận đã thanh toán</button>
+        </form>
+    </article>
+</main>
+</body>
+</html>

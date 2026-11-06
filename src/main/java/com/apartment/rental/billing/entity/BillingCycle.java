@@ -52,6 +52,13 @@ public class BillingCycle {
         updatedAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     }
 
+    public static BillingCycle pendingInput(LocalDate collectionDate) {
+        BillingCycle cycle = new BillingCycle();
+        cycle.setCollectionDate(collectionDate);
+        cycle.setStatus(BillingCycleStatus.PENDING_INPUT);
+        return cycle;
+    }
+
     @Column(name = "collection_date", nullable = false)
     private LocalDate collectionDate;
 

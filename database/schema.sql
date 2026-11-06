@@ -202,8 +202,8 @@ CREATE TABLE dbo.invoices (
  CONSTRAINT ck_invoices_due CHECK (due_at = DATEADD(HOUR,48,issued_at)),
  CONSTRAINT ck_invoices_payment CHECK (
    (status IN ('UNPAID','OVERDUE') AND paid_at IS NULL AND payment_method IS NULL AND payment_reference IS NULL AND confirmed_by_user_id IS NULL)
-   OR (status = 'PAID' AND paid_at IS NOT NULL AND payment_method IS NOT NULL AND payment_method IN ('SANDBOX','CASH','BANK_TRANSFER')
-       AND (payment_method = 'SANDBOX' OR confirmed_by_user_id IS NOT NULL))
+   OR (status = 'PAID' AND paid_at IS NOT NULL AND payment_method IS NOT NULL AND payment_method IN ('CASH','BANK_TRANSFER')
+       AND (confirmed_by_user_id IS NOT NULL OR (payment_method = 'BANK_TRANSFER' AND payment_reference IS NOT NULL)))
  )
 );
 CREATE UNIQUE INDEX ux_invoices_cycle_item ON dbo.invoices(billing_cycle_item_id) WHERE billing_cycle_item_id IS NOT NULL;
