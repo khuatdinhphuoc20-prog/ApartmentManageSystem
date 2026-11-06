@@ -30,7 +30,7 @@
 ### 0.2. Điều kiện foundation trước khi 6 người bắt đầu
 
 - Chốt schema bằng một `schema.sql` tự tạo database phát triển cục bộ tên `RentalApartmentDev` khi chưa có và chạy thủ công một lần trên SQL Server của mỗi thành viên, không dùng Flyway; JPA dùng `ddl-auto=validate`. Mỗi máy đặt `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` riêng qua biến môi trường, không đưa mật khẩu database vào Git. Foundation bổ sung starter Web MVC phù hợp Spring Boot 4.1.1 trong `pom.xml`. Giữ enum, tiền `BigDecimal`/`DECIMAL(19,0)`, ngày nghiệp vụ UTC+7, thời điểm UTC, chính sách `[from,to)`.
-- Trưởng nhóm dựng **tất cả 10 bảng, constraint/index và JPA Entity/relationship** trên nhánh foundation rồi merge `main` trước khi bàn giao. `seed_admin.sql` chạy thủ công một lần để tạo Admin mẫu `admin@rental.local` với hash BCrypt; M01 dùng `BCryptPasswordEncoder` để kiểm tra mật khẩu, còn mật khẩu bản rõ được chia sẻ riêng ngoài Git. Filtered unique index giới hạn tối đa một ADMIN. Đây là **điều kiện triển khai**, chỉ đánh dấu `DONE` khi script đã chạy, Entity đã được kiểm tra và Admin seed thực sự tồn tại trên database của môi trường tương ứng; nếu chưa, thành viên vẫn có thể làm DTO/service thuần/Thymeleaf mock nhưng chưa được coi là đã có Entity chạy thật.
+- Trưởng nhóm dựng **tất cả 10 bảng, constraint/index và JPA Entity/relationship** trên nhánh foundation rồi merge `main` trước khi bàn giao. `seed_data.sql` chạy thủ công một lần để tạo Admin mẫu `admin@rental.local` và dữ liệu demo với hash BCrypt; mật khẩu Admin phát triển cũng có trong file seed để tiện đăng nhập local. Chỉ dùng bộ credential này cho dữ liệu demo. M01 dùng `BCryptPasswordEncoder` để kiểm tra mật khẩu. Filtered unique index giới hạn tối đa một ADMIN. Đây là **điều kiện triển khai**, chỉ đánh dấu `DONE` khi script đã chạy, Entity đã được kiểm tra và Admin seed thực sự tồn tại trên database của môi trường tương ứng; nếu chưa, thành viên vẫn có thể làm DTO/service thuần/Thymeleaf mock nhưng chưa được coi là đã có Entity chạy thật.
 - Sau foundation, MO duy trì Repository/Service, đề xuất thay đổi Entity/schema qua PR trưởng nhóm review. Không giao sáu người tạo lại sáu nhóm Entity vốn đã có sẵn.
 - Chốt `CurrentUser`/Role, skeleton Thymeleaf, tên route/feature package, tiêu chuẩn DTO/Port, cấu hình test, dữ liệu seed ADMIN có CCCD; chốt ai duyệt thay đổi code dùng chung (`pom.xml`, `SecurityConfig`, global layout/schema SQL).
 - Đã chốt: `area_m2` có thể NULL nhưng nếu có phải > 0; `floor_number` bắt buộc > 0; giá niêm yết Room và giá tháng Contract đều > 0; không đặt thời hạn thuê tối thiểu mới ngoài `planned_end_date > start_date`; email đăng nhập phân biệt hoa/thường, chỉ bỏ khoảng trắng đầu/cuối. Những việc còn cần chọn cho demo/module: cách lưu/upload ảnh phòng, cổng sandbox và dữ liệu demo các kỳ cá nhân. **Không tự biến giả định thành Business Rule**.
@@ -529,7 +529,7 @@ Mỗi dependency cứng/đọc phải có một **Dependency Contract** ngắn v
 
 | Ngày | Mục tiêu chính | Ai có thể làm độc lập | Đầu ra cần nghiệm thu |
 |---|---|---|---|
-| **D1** | Foundation chạy; chốt tên DTO/Port, owner các file chung và WO; tạo nhánh/ticket. | M01 Auth skeleton, M02 Room UI, M03 App state, M04 validation, M05 sandbox fixture, M06 Notification. | `schema.sql` và `seed_admin.sql` đã chạy một lần trên `RentalApartmentDev` cục bộ, 9 Entity/Enum map đúng và JPA `validate` đạt; kiểm tra thêm constraint bằng dữ liệu sai; `CurrentUser`, Room/Contract/Invoice ports tối thiểu và người phụ trách được công bố. Nếu foundation chưa xong, D1 chỉ là mục tiêu chứ chưa phải kết quả. |
+| **D1** | Foundation chạy; chốt tên DTO/Port, owner các file chung và WO; tạo nhánh/ticket. | M01 Auth skeleton, M02 Room UI, M03 App state, M04 validation, M05 sandbox fixture, M06 Notification. | `schema.sql` và `seed_data.sql` đã chạy một lần trên `RentalApartmentDev` cục bộ, 9 Entity/Enum map đúng và JPA `validate` đạt; kiểm tra thêm constraint bằng dữ liệu sai; `CurrentUser`, Room/Contract/Invoice ports tối thiểu và người phụ trách được công bố. Nếu foundation chưa xong, D1 chỉ là mục tiêu chứ chưa phải kết quả. |
 | **D2** | Các phần **P0** và mock giao tiếp; cung cấp Query sớm. | M01 UC01–03; M02 UC04–07/09; M03 UC11–13; M04 UC18/20; M05 Invoice DTO, sandbox; M06 UC39/40, calculator. | Mỗi người có route/service/test tự chạy được, không sửa Repo người khác. |
 | **D3** | Hoàn thành phần độc lập và viết workflow coordinator theo mock. | M03 UC14 mock; M04 UC16/17 mock; M05 UC24–26 snapshot mock; M06 UC30/31/32 mock. | Unit tests success/failure và sổ dependency cập nhật `MOCK_READY`. |
 | **D4** | Đóng băng giao tiếp P1 để ghép; Auth/Room/Contract queries thật. | M01/M02 hoàn thiện provider; M04 ContractBillingQuery; M05/06 tiếp tục sandbox, calculator. | Build chung xanh, `CurrentUser`, RoomQuery, ContractQuery dùng được; không tồn tại vòng constructor. |
@@ -555,7 +555,7 @@ Mỗi dependency cứng/đọc phải có một **Dependency Contract** ngắn v
 
 | Khu vực code | Người chịu trách nhiệm chính | Ai được đề nghị sửa? |
 |---|---|---|
-| `schema.sql`, `seed_admin.sql`, các Entity/Enum ban đầu và common config | Trưởng nhóm/foundation trước handoff | MO gửi PR/đề xuất khi phát sinh thay đổi; leader duyệt. Script schema chạy thủ công một lần, không có Flyway. |
+| `schema.sql`, `seed_data.sql`, các Entity/Enum ban đầu và common config | Trưởng nhóm/foundation trước handoff | MO gửi PR/đề xuất khi phát sinh thay đổi; leader duyệt. Script schema chạy thủ công một lần, không có Flyway. |
 | `account/**`, `issue/**`, Auth `SecurityConfig` | M01 | Module khác gửi yêu cầu role/guard; không tự viết security riêng. |
 | `room/**`, RoomRepository/RoomCommand | M02 | M03/M04/M05/M06 qua Room Port. |
 | `application/**`, ApplicationRepository/Command | M03 | M04 gọi Application Port. |
@@ -617,7 +617,7 @@ Mỗi buổi họp ngắn hỏi đúng ba câu: (1) UC/ticket nào đã Local Do
 
 **Tiêu chuẩn nghiệm thu một workflow cứng:** tests đạt cả **success + failure/rollback + sai quyền + chạy lại/idempotency hoặc concurrency** nếu có; dùng Port thật, SQL Server thật và các Entity/schema chuẩn. Unit test với mock không đủ để đánh dấu E2E_DONE.
 
-**Kiểm tra foundation trước E2E:** chạy `schema.sql` và `seed_admin.sql` một lần trên `RentalApartmentDev` của môi trường cần nghiệm thu; kiểm tra dữ liệu hợp lệ/sai cho PK, FK ghép, UNIQUE/filtered index, CHECK (đặc biệt `floor_number > 0`, giá tháng > 0, `area_m2` NULL hoặc > 0), email phân biệt hoa/thường, timestamp UTC và JPA `validate`. Không cần Docker, Testcontainers hoặc hạ tầng CI database riêng cho bước này. Tổng tiền kỳ bằng 0 vẫn phải theo NO_CHARGE dù giá tháng của Room/Contract > 0.
+**Kiểm tra foundation trước E2E:** chạy `schema.sql` và `seed_data.sql` một lần trên `RentalApartmentDev` của môi trường cần nghiệm thu; kiểm tra dữ liệu hợp lệ/sai cho PK, FK ghép, UNIQUE/filtered index, CHECK (đặc biệt `floor_number > 0`, giá tháng > 0, `area_m2` NULL hoặc > 0), email phân biệt hoa/thường, timestamp UTC và JPA `validate`. Không cần Docker, Testcontainers hoặc hạ tầng CI database riêng cho bước này. Tổng tiền kỳ bằng 0 vẫn phải theo NO_CHARGE dù giá tháng của Room/Contract > 0.
 
 ---
 
@@ -627,7 +627,7 @@ Mỗi người phải xác nhận:
 
 - [ ] Đọc mục module của mình; biết **chính xác UC, BR và trạng thái** cần bảo vệ.
 - [ ] Biết mình là Module Owner của bảng/Repository/Service nào và Workflow Owner của workflow nào.
-- [ ] Đã nhận `schema.sql`, `seed_admin.sql`, các Entity/Enum và biết schema đã được chạy trên `RentalApartmentDev` cục bộ với JPA `validate`; không tạo lại hoặc đổi schema âm thầm.
+- [ ] Đã nhận `schema.sql`, `seed_data.sql`, các Entity/Enum và biết schema đã được chạy trên `RentalApartmentDev` cục bộ với JPA `validate`; không tạo lại hoặc đổi schema âm thầm.
 - [ ] Có danh sách P0 làm ngay và P1 cần Port/mock, không ngồi chờ cả module người khác xong.
 - [ ] Biết mã Dependency Dxx của mình và người cần trao đổi ở đầu bên kia.
 - [ ] Hai bên đã chốt DTO/Port: input/output, status, exception, transaction và idempotency.
@@ -665,9 +665,9 @@ Các điểm sau là **quy ước tổ chức phát triển/kỹ thuật**, **kh
 
 1. **Hai lớp owner:** giữ Module Owner theo 10 bảng; nhóm xác nhận Workflow Owner của những luồng khác theo Bảng WF-01..WF-07 hoặc chỉ rõ điều chỉnh.
 2. **Đã chốt ownership WO termination:** M04 điều phối **một** TerminationWorkflow để cả UC34 và nhánh RENTED→INACTIVE của UC08 dùng chung. M06 chỉ sở hữu máy tính settlement, M05 chỉ issue Invoice và M02 chỉ update Room.
-3. **Xác nhận foundation thực sự đã có:** một `schema.sql` và một `seed_admin.sql` chạy thủ công một lần trên `RentalApartmentDev` cục bộ, toàn bộ 9 Entity/Enum/JPA relationship, kiểm tra constraint/index bằng dữ liệu mẫu hợp lệ/sai và JPA `validate` trước khi giao nhánh. Nếu chưa, dùng P0 thiết kế trước nhưng không tự đánh dấu hoàn tất DB. Không dùng Flyway.
+3. **Xác nhận foundation thực sự đã có:** một `schema.sql` và một `seed_data.sql` chạy thủ công một lần trên `RentalApartmentDev` cục bộ, toàn bộ 9 Entity/Enum/JPA relationship, kiểm tra constraint/index bằng dữ liệu mẫu hợp lệ/sai và JPA `validate` trước khi giao nhánh. Nếu chưa, dùng P0 thiết kế trước nhưng không tự đánh dấu hoàn tất DB. Không dùng Flyway.
 4. **Chốt giao tiếp tối thiểu:** CurrentUser/RoomQuery/RoomOccupancy, ApplicationQuery/Command, ContractCreate/ContractBilling/Activity, InvoiceQuery/Command, SettlementCalculator, NotificationEvent. Chốt error/transaction/idempotency, không cần chốt mọi chi tiết class ngay từ đầu.
-5. **Chốt một owner config chung:** M01 SecurityConfig; M05 sở hữu lệnh Admin nhập điện nước/phát hành theo Contract; chủ dự án/một owner `schema.sql`, `seed_admin.sql`, `pom.xml`, layouts và CI. Không hai người tự sửa code chung độc lập.
+5. **Chốt một owner config chung:** M01 SecurityConfig; M05 sở hữu lệnh Admin nhập điện nước/phát hành theo Contract; chủ dự án/một owner `schema.sql`, `seed_data.sql`, `pom.xml`, layouts và CI. Không hai người tự sửa code chung độc lập.
 6. **Chốt dữ liệu/thiết bị demo còn mở:** cách lưu/upload ảnh phòng, cổng sandbox cụ thể, dữ liệu demo các kỳ tính theo Contract. Giá thuê > 0, diện tích nullable > 0 khi có, tầng bắt buộc > 0 và không thêm thời hạn thuê tối thiểu đã được chốt; không đưa chúng trở lại danh sách chờ. Mọi quyết định nghiệp vụ mới phải sửa `BUSINESS_SPECIFICATION.md` trước; V2 chỉ cập nhật cách làm.
 
 ---

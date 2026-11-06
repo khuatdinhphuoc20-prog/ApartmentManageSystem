@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/customer :: layout('Chi tiết phòng ' + ${room.roomCode}, 'rooms', ~{::article})}">
+<body>
+<article class="container py-4 py-lg-5">
+    <a th:href="@{/rooms}" class="btn btn-outline-secondary btn-sm mb-4">← Quay lại danh sách phòng</a>
+
+    <div class="row g-4 g-lg-5">
+        <!-- Ảnh đại diện phòng -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm overflow-hidden rounded-4">
+                <img th:src="${room.coverImagePath}" class="img-fluid w-100" alt="Ảnh phòng" style="height: 380px; object-fit: cover;"
+                     onerror="this.src='/images/room-plan.svg'">
+            </div>
+        </div>
+
+        <!-- Thông tin chi tiết phòng -->
+        <div class="col-lg-6">
+            <span class="badge bg-success mb-2">Đang mở cho thuê</span>
+            <h1 class="display-6 fw-bold mb-3" th:text="|Phòng ${room.roomCode}|"></h1>
+            <p class="h3 text-primary fw-bold mb-4" th:text="|${#numbers.formatDecimal(room.listedMonthlyRent, 0, 'POINT', 0, 'POINT')} đ / tháng|"></p>
+
+            <div class="row g-3 py-3 border-top border-bottom mb-4">
+                <div class="col-4">
+                    <span class="text-secondary small d-block">Tầng lầu</span>
+                    <strong class="fs-5" th:text="|Tầng ${room.floorNumber}|"></strong>
+                </div>
+                <div class="col-4">
+                    <span class="text-secondary small d-block">Diện tích</span>
+                    <strong class="fs-5" th:text="${room.areaM2 != null ? room.areaM2 + ' m²' : 'Chưa cập nhật'}"></strong>
+                </div>
+                <div class="col-4">
+                    <span class="text-secondary small d-block">Sức chứa tối đa</span>
+                    <strong class="fs-5" th:text="|${room.capacity} người|"></strong>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <h2 class="h5 fw-semibold mb-2">Tiện ích & Mô tả</h2>
+                <p class="text-secondary" style="white-space: pre-line;" th:text="${room.description != null && !room.description.isEmpty() ? room.description : 'Phòng tiêu chuẩn tòa nhà, trang bị cơ bản đầy đủ.'}"></p>
+            </div>
+
+            <!-- Nút hành động dẫn sang nộp đơn của M03 (UC10) -->
+            <div class="d-grid gap-2">
+                <a th:href="@{/customer/applications/apply/{roomId}(roomId=${room.id})}" class="btn btn-primary btn-lg py-3 fw-semibold">
+                    Đăng ký thuê phòng này
+                </a>
+            </div>
+        </div>
+    </div>
+</article>
+</body>
+</html>

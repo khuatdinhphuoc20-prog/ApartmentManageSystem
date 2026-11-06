@@ -17,11 +17,14 @@
         </div>
     </header>
 
+    <!-- Thông báo lỗi chuyển hướng nếu có -->
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show mt-4" role="alert" th:text="${errorMessage}"></div>
+
     <section id="rooms" class="pt-5" aria-labelledby="rooms-title">
         <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3">
             <div>
                 <h2 id="rooms-title" class="h3 mb-1">Phòng còn cho thuê</h2>
-                <p class="text-secondary mb-0">Phòng và giá thuê minh họa.</p>
+                <p class="text-secondary mb-0">Danh sách phòng đang sẵn sàng đón bạn đến thuê.</p>
             </div>
             <div id="room-search" hidden>
                 <label for="room-code" class="form-label small mb-1">Tìm theo mã phòng</label>
@@ -29,22 +32,32 @@
             </div>
         </div>
         <div id="room-list" class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3 g-lg-4">
-            <div class="col" th:each="room : ${rooms}" th:attr="data-room-code=${room.code}">
+            <div th:if="${#lists.isEmpty(rooms)}" class="col-12 text-center py-5 text-secondary">
+                <p class="mb-0">Hiện tại chưa có phòng nào khả dụng.</p>
+            </div>
+            <div class="col" th:each="room : ${rooms}" th:attr="data-room-code=${room.roomCode}">
                 <div class="card room-card h-100">
                     <div class="room-cover position-relative">
-                        <img class="w-100" th:src="@{/images/room-plan.svg}" alt="" width="320" height="140">
+                        <img class="w-100" th:src="${room.coverImagePath != null and !room.coverImagePath.empty ? room.coverImagePath : '/images/room-plan.svg'}"
+                             alt="Ảnh minh họa phòng" width="320" height="140" style="object-fit: cover; max-height: 180px;"
+                             onerror="this.src='/images/room-plan.svg'">
                         <span class="badge room-status">Còn cho thuê</span>
                     </div>
-                    <div class="card-body p-4">
+                    <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-center gap-2">
-                            <h3 class="h5 mb-0" th:text="|Phòng ${room.code}|"></h3>
-                            <span class="text-secondary small" th:text="|Tầng ${room.floor}|"></span>
+                            <h3 class="h5 mb-0" th:text="|Phòng ${room.roomCode}|"></h3>
+                            <span class="text-secondary small" th:text="|Tầng ${room.floorNumber}|"></span>
                         </div>
                         <div class="d-flex flex-wrap gap-3 small text-secondary my-3">
-                            <span><svg th:replace="~{fragments/shared :: icon('area')}"></svg> <span th:text="|${room.area} m²|"></span></span>
+                            <span th:if="${room.areaM2 != null}"><svg th:replace="~{fragments/shared :: icon('area')}"></svg> <span th:text="|${room.areaM2} m²|"></span></span>
                             <span><svg th:replace="~{fragments/shared :: icon('people')}"></svg> <span th:text="|Tối đa ${room.capacity} người|"></span></span>
                         </div>
-                        <p class="border-top pt-3 mb-0"><strong class="price" th:text="|${room.monthlyPrice} đ|"></strong> / tháng</p>
+                        <div class="mt-auto border-top pt-3 d-flex align-items-center justify-content-between">
+                            <div>
+                                <strong class="price text-primary" th:text="${#numbers.formatDecimal(room.listedMonthlyRent, 0, 'POINT', 0, 'POINT')} + ' đ'"></strong> <span class="small text-secondary">/ tháng</span>
+                            </div>
+                            <a th:href="@{/rooms/{id}(id=${room.id})}" class="btn btn-outline-primary btn-sm px-3">Chi tiết</a>
+                        </div>
                     </div>
                 </div>
             </div>

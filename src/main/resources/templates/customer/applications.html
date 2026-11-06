@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{fragments/customer :: layout('Đơn thuê của tôi', 'applications', ~{::article})}">
+<body>
+<article class="container py-4 py-lg-5">
+    <header class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 fw-semibold mb-1">Đơn thuê của tôi</h1>
+            <p class="text-secondary mb-0">Theo dõi trạng thái xét duyệt các yêu cầu đăng ký thuê phòng.</p>
+        </div>
+        <a th:href="@{/rooms}" class="btn btn-outline-primary btn-sm">
+            <svg th:replace="~{fragments/shared :: icon('building')}"></svg> Tìm thêm phòng
+        </a>
+    </header>
+
+    <!-- Thông báo kết quả thao tác -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- Khi chưa có đơn nào -->
+    <div th:if="${#lists.isEmpty(applications)}" class="card text-center p-5">
+        <div class="my-4">
+            <svg class="text-secondary mb-3" style="width: 48px; height: 48px;" aria-hidden="true"><use th:href="@{/images/icons.svg#clipboard}"></use></svg>
+            <h2 class="h5 mb-2">Bạn chưa có đơn đăng ký thuê nào</h2>
+            <p class="text-secondary mb-4">Hãy khám phá danh sách phòng khả dụng và gửi đơn đăng ký để giữ chỗ.</p>
+            <a th:href="@{/rooms}" class="btn btn-primary">Xem phòng ngay</a>
+        </div>
+    </div>
+
+    <!-- Danh sách đơn thuê -->
+    <div th:if="${!#lists.isEmpty(applications)}" class="row g-3">
+        <div class="col-12" th:each="app : ${applications}">
+            <div class="card p-3 p-md-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge bg-light text-dark border fs-6 px-3 py-2" th:text="|Phòng ${app.roomCode}|"></span>
+                        <span class="text-secondary small" th:text="|Tầng ${app.roomFloor}|"></span>
+                    </div>
+
+                    <!-- Badge trạng thái (CSS xử lý trực tiếp ở View theo đúng chuẩn Frontend) -->
+                    <div>
+                        <span th:if="${app.status.name() == 'PENDING'}" class="badge bg-warning text-dark px-3 py-2">Chờ duyệt</span>
+                        <span th:if="${app.status.name() == 'APPROVED'}" class="badge bg-success px-3 py-2">Đã duyệt</span>
+                        <span th:if="${app.status.name() == 'REJECTED'}" class="badge bg-danger px-3 py-2">Bị từ chối</span>
+                        <span th:if="${app.status.name() == 'WITHDRAWN'}" class="badge bg-secondary px-3 py-2">Đã rút</span>
+                    </div>
+                </div>
+
+                <div class="row g-3 small border-top pt-3 text-secondary">
+                    <div class="col-sm-6 col-md-3">
+                        <span class="d-block text-muted">Ngày bắt đầu dự kiến:</span>
+                        <strong class="text-dark" th:text="${#temporals.format(app.requestedStartDate, 'dd/MM/yyyy')}"></strong>
+                    </div>
+                    <div class="col-sm-6 col-md-3">
+                        <span class="d-block text-muted">Ngày kết thúc hợp đồng:</span>
+                        <strong class="text-dark" th:text="${#temporals.format(app.requestedEndDate, 'dd/MM/yyyy')}"></strong>
+                    </div>
+                    <div class="col-sm-6 col-md-3">
+                        <span class="d-block text-muted">Giá niêm yết hiện tại:</span>
+                        <strong class="text-dark" th:text="|${#numbers.formatDecimal(app.roomListedRent, 0, 'POINT', 0, 'COMMA')} đ/tháng|"></strong>
+                    </div>
+                    <div class="col-sm-6 col-md-3">
+                        <span class="d-block text-muted">Thời điểm gửi đơn:</span>
+                        <span th:text="${#temporals.format(app.createdAt, 'dd/MM/yyyy HH:mm')}"></span>
+                    </div>
+                </div>
+
+                <!-- Ghi chú xử lý -->
+                <div th:if="${app.processingNote != null}" class="alert alert-light border mt-3 mb-0 small">
+                    <strong>Ghi chú:</strong>
+                    <span th:if="${app.processingNote == 'Room rented to another contract'}">Phòng đã được thuê</span>
+                    <span th:if="${app.processingNote == 'Withdrawn by applicant'}">Người thuê rút đơn</span>
+                    <span th:if="${app.processingNote != 'Room rented to another contract' and app.processingNote != 'Withdrawn by applicant'}"
+                          th:text="${app.processingNote}">
+    </span>
+                </div>
+
+                <!-- Thao tác rút đơn (Chỉ cho phép khi còn PENDING theo BR-APP-03) -->
+                <div th:if="${app.canWithdraw}" class="d-flex justify-content-end mt-3 pt-2 border-top">
+                    <form th:action="@{/customer/applications/{id}/withdraw(id=${app.id})}" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn rút đơn đăng ký thuê này?');">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Rút đơn</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</article>
+</body>
+</html>

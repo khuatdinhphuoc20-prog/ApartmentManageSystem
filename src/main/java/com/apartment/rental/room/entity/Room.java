@@ -25,7 +25,7 @@ import org.hibernate.type.SqlTypes;
 @Setter
 @Entity
 @Table(name = "rooms")
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 public class Room {
 
     @Id
