@@ -33,7 +33,7 @@ import org.hibernate.type.SqlTypes;
 @Setter
 @Entity
 @Table(name = "contracts")
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor(access = AccessLevel.PUBLIC)
 public class Contract {
 
     @Id
