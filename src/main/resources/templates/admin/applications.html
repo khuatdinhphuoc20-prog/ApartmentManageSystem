@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/admin :: layout('Quản lý đơn thuê', 'applications', ~{::#applications-management})}">
+<body>
+<section id="applications-management">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 fw-semibold mb-1">Quản lý đơn thuê phòng</h1>
+            <p class="text-secondary mb-0">Xét duyệt hoặc từ chối các yêu cầu đăng ký thuê phòng từ khách hàng.</p>
+        </div>
+    </div>
+
+    <!-- Thông báo Flash Message -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- Thanh bộ lọc trạng thái (UC13) -->
+    <div class="card p-3 mb-4">
+        <form th:action="@{/admin/applications}" method="get" class="row g-2 align-items-center">
+            <div class="col-auto">
+                <label for="filterStatus" class="col-form-label small fw-semibold">Trạng thái:</label>
+            </div>
+            <div class="col-auto">
+                <select name="status" id="filterStatus" class="form-select form-select-sm">
+                    <option value="" th:selected="${filter.status == null}">Tất cả trạng thái</option>
+                    <option value="PENDING" th:selected="${filter.status?.name() == 'PENDING'}">Chờ duyệt (PENDING)</option>
+                    <option value="APPROVED" th:selected="${filter.status?.name() == 'APPROVED'}">Đã duyệt (APPROVED)</option>
+                    <option value="REJECTED" th:selected="${filter.status?.name() == 'REJECTED'}">Đã từ chối (REJECTED)</option>
+                    <option value="WITHDRAWN" th:selected="${filter.status?.name() == 'WITHDRAWN'}">Khách rút (WITHDRAWN)</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-outline-primary">Lọc danh sách</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Bảng danh sách đơn -->
+    <div class="card overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-secondary">
+                <tr>
+                    <th class="ps-4">Mã đơn</th>
+                    <th>Khách thuê</th>
+                    <th>Phòng</th>
+                    <th>Thời gian thuê</th>
+                    <th>Ngày nộp</th>
+                    <th>Trạng thái</th>
+                    <th class="text-end pe-4">Thao tác / Ghi chú</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(pageResult.content)}">
+                    <td colspan="7" class="text-center py-4 text-muted">Không tìm thấy đơn thuê nào phù hợp.</td>
+                </tr>
+                <tr th:each="app : ${pageResult.content}">
+                    <td class="ps-4 fw-semibold" th:text="|#${app.id}|"></td>
+                    <td>
+                        <div class="fw-semibold" th:text="${app.applicantName}"></div>
+                        <div class="small text-muted" th:text="${app.applicantPhone}"></div>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border" th:text="|Phòng ${app.roomCode}|"></span>
+                    </td>
+                    <td class="small">
+                        <span th:text="${#temporals.format(app.requestedStartDate, 'dd/MM/yyyy')}"></span> &rarr;
+                        <span th:text="${#temporals.format(app.requestedEndDate, 'dd/MM/yyyy')}"></span>
+                    </td>
+                    <td class="small text-muted" th:text="${#temporals.format(app.createdAt, 'dd/MM/yyyy HH:mm')}"></td>
+                    <td>
+                        <span th:if="${app.status.name() == 'PENDING'}" class="badge bg-warning text-dark">Chờ duyệt</span>
+                        <span th:if="${app.status.name() == 'APPROVED'}" class="badge bg-success">Đã duyệt</span>
+                        <span th:if="${app.status.name() == 'REJECTED'}" class="badge bg-danger">Từ chối</span>
+                        <span th:if="${app.status.name() == 'WITHDRAWN'}" class="badge bg-secondary">Đã rút</span>
+                    </td>
+                    <td class="text-end pe-4">
+                        <!-- Nếu đơn PENDING: Hiển thị 2 nút thao tác -->
+                        <div th:if="${app.status.name() == 'PENDING'}" class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal" th:attr="data-bs-target=|#approveModal-${app.id}|">
+                                Duyệt
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" th:attr="data-bs-target=|#rejectModal-${app.id}|">
+                                Từ chối
+                            </button>
+                        </div>
+
+                        <!-- Nếu đơn ĐÃ DUYỆT: Hiển thị nhãn 'Đã duyệt' -->
+                        <span th:if="${app.status.name() == 'APPROVED'}" class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                            Đã duyệt
+                        </span>
+
+                        <!-- Nếu đơn BỊ TỪ CHỐI hoặc ĐÃ RÚT: Hiển thị ghi chú tiếng Việt -->
+                        <span th:if="${app.status.name() == 'REJECTED' or app.status.name() == 'WITHDRAWN'}" class="small text-secondary">
+                            <span th:if="${app.processingNote == 'Room rented to another contract'}">Phòng đã được thuê</span>
+                            <span th:if="${app.processingNote == 'Withdrawn by applicant'}">Người thuê rút đơn</span>
+                            <span th:if="${app.processingNote != 'Room rented to another contract' and app.processingNote != 'Withdrawn by applicant'}"
+                                  th:text="${app.processingNote != null ? app.processingNote : (app.status.name() == 'REJECTED' ? 'Đã từ chối' : 'Đã rút')}">
+                            </span>
+                        </span>
+
+                        <!-- Modal xác nhận Duyệt đơn -->
+                        <div class="modal fade text-start" th:id="|approveModal-${app.id}|" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Xác nhận duyệt đơn thuê #<span th:text="${app.id}"></span></h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p>Bạn có chắc chắn muốn duyệt đơn thuê của <strong><span th:text="${app.applicantName}"></span></strong> cho <strong>Phòng <span th:text="${app.roomCode}"></span></strong>?</p>
+                                        <div class="alert alert-warning small mb-0">
+                                            <strong>Hệ thống sẽ tự động:</strong>
+                                            <ul class="mb-0 ps-3">
+                                                <li>Chuyển trạng thái phòng sang <strong>RENTED</strong>.</li>
+                                                <li>Tự động <strong>TỪ CHỐI</strong> tất cả các đơn chờ khác của phòng này.</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                                        <form th:action="@{/admin/applications/{id}/approve(id=${app.id})}" method="post">
+                                            <button type="submit" class="btn btn-success btn-sm">Xác nhận duyệt</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Từ chối đơn -->
+                        <div class="modal fade text-start" th:id="|rejectModal-${app.id}|" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form th:action="@{/admin/applications/{id}/reject(id=${app.id})}" method="post">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Từ chối đơn thuê #<span th:text="${app.id}"></span></h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p class="mb-2">Nhập lý do từ chối đơn thuê của <strong><span th:text="${app.applicantName}"></span></strong>:</p>
+                                            <textarea name="reason" class="form-control" rows="3" placeholder="Ví dụ: Khách chưa đủ hồ sơ, phòng đang sửa chữa..." required></textarea>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                                            <button type="submit" class="btn btn-danger btn-sm">Xác nhận từ chối</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+</body>
+</html>
