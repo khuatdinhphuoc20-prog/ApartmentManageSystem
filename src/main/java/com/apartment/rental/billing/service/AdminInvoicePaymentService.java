@@ -40,9 +40,20 @@ public class AdminInvoicePaymentService {
 
     @Transactional(readOnly = true)
     public List<OutstandingInvoiceDto> findOutstandingInvoices(String adminEmail) {
+        return findOutstandingInvoices(adminEmail, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OutstandingInvoiceDto> findOutstandingInvoices(String adminEmail, InvoiceStatus status) {
         requireAdmin(adminEmail);
+        if (status != null && status != InvoiceStatus.UNPAID && status != InvoiceStatus.OVERDUE) {
+            throw new IllegalArgumentException("Chỉ được lọc công nợ theo trạng thái UNPAID hoặc OVERDUE.");
+        }
+        List<InvoiceStatus> statuses = status == null
+            ? List.of(InvoiceStatus.UNPAID, InvoiceStatus.OVERDUE)
+            : List.of(status);
         return invoiceRepository.findAllByStatusInOrderByDueAtAscIdAsc(
-                List.of(InvoiceStatus.UNPAID, InvoiceStatus.OVERDUE)
+                statuses
             ).stream()
             .map(invoice -> new OutstandingInvoiceDto(
                 invoice.getId(),

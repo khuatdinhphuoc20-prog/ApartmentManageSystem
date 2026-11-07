@@ -22,6 +22,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("select n from Notification n where n.id = :id and n.recipientUser.id = :recipientId")
     Optional<Notification> findForRecipientAndLock(@Param("id") Long id, @Param("recipientId") Long recipientId);
 
+
+
     boolean existsByEventKeyAndRecipientUser_Id(String eventKey, Long recipientUserId);
 
     boolean existsByEventKey(String eventKey);

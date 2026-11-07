@@ -22,7 +22,7 @@
             <th:block th:replace="~{fragments/admin-sidebar :: item('billing', 'Kỳ thu & hóa đơn', 'receipt', ${null})}"></th:block>
             <th:block th:replace="~{fragments/admin-sidebar :: item('collections', 'Thu tiền & công nợ', 'wallet', ${null})}"></th:block>
             <th:block th:replace="~{fragments/admin-sidebar :: item('issues', 'Phản ánh', 'message', ${null})}"></th:block>
-            <th:block th:replace="~{fragments/admin-sidebar :: item('notifications', 'Thông báo', 'bell', ${null})}"></th:block>
+            <th:block th:replace="~{fragments/admin-sidebar :: item('notifications', 'Thông báo', 'bell', @{/notifications})}"></th:block>
         </nav>
     </div>
 </aside>

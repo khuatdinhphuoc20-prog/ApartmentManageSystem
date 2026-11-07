@@ -1,10 +1,12 @@
 package com.apartment.rental.payment.controller;
 
 import com.apartment.rental.billing.service.AdminInvoicePaymentService;
+import com.apartment.rental.invoice.entity.InvoiceStatus;
 import com.apartment.rental.invoice.entity.PaymentMethod;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.server.ResponseStatusException;
 
 @Controller
 public class AdminInvoicePaymentController {
@@ -24,8 +27,16 @@ public class AdminInvoicePaymentController {
     }
 
     @GetMapping("/admin/payment/reconciliation")
-    public String paymentPage(Authentication authentication, Model model) {
-        model.addAttribute("invoices", paymentService.findOutstandingInvoices(authentication.getName()));
+    public String paymentPage(
+        @RequestParam(name = "status", required = false) InvoiceStatus status,
+        Authentication authentication,
+        Model model
+    ) {
+        if (status != null && status != InvoiceStatus.UNPAID && status != InvoiceStatus.OVERDUE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Chỉ được lọc công nợ theo trạng thái UNPAID hoặc OVERDUE.");
+        }
+        model.addAttribute("invoices", paymentService.findOutstandingInvoices(authentication.getName(), status));
         model.addAttribute("paymentMethods", new PaymentMethod[] {PaymentMethod.CASH, PaymentMethod.BANK_TRANSFER});
         return "admin/payment-record";
     }

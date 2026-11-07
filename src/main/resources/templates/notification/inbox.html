@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{${notificationLayout} :: layout('Thông báo của tôi', 'notifications', ~{::#notification-content})}">
+<body>
+<section id="notification-content" class="pb-4"
+         th:classappend="${notificationAdmin ? '' : 'container py-4 py-lg-5'}">
+    <header class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h2 fw-semibold mb-2">Thông báo của tôi</h1>
+            <p class="text-secondary mb-0">Theo dõi thông báo từ quản lý và hệ thống.</p>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-3">
+            <span class="badge text-bg-light border rounded-pill px-3 py-2"
+                  th:text="|${notificationPage.totalElements} thông báo|">0 thông báo</span>
+            <a th:if="${notificationAdmin}" class="btn btn-primary" th:href="@{/admin/notifications/new}">Soạn thông báo</a>
+        </div>
+    </header>
+
+    <div th:if="${notificationPage.empty}" class="card">
+        <div class="card-body text-center py-5 px-4">
+            <span class="d-inline-block text-secondary fs-1 mb-3">
+                <svg th:replace="~{fragments/shared :: icon('bell')}"></svg>
+            </span>
+            <h2 class="h5">Bạn chưa có thông báo nào</h2>
+            <p class="text-secondary mb-0">Các thông báo gửi đến bạn sẽ xuất hiện tại đây.</p>
+        </div>
+    </div>
+
+    <div th:unless="${notificationPage.empty}" class="d-grid gap-3">
+        <article th:each="item : ${notificationPage.content}" class="card"
+                 th:classappend="${item.status.name() == 'UNREAD' ? 'border-start border-4 border-primary' : ''}">
+            <div class="card-body p-3 p-lg-4">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span class="badge" th:classappend="${item.status.name() == 'UNREAD' ? 'text-bg-primary' : 'text-bg-light border'}"
+                          th:text="${item.status.name() == 'UNREAD' ? 'Chưa đọc' : 'Đã đọc'}">Chưa đọc</span>
+                    <span class="small text-secondary"
+                          th:text="${item.sourceType.name() == 'MANUAL' ? 'Từ quản lý' : 'Hệ thống'}">Hệ thống</span>
+                    <time class="small text-secondary ms-sm-auto" th:datetime="${item.createdAt}"
+                          th:text="${#temporals.format(item.createdAt.atZone(notificationZone), 'dd/MM/yyyy HH:mm')}">Thời gian</time>
+                </div>
+                <h2 class="h5 mb-2 text-break">
+                    <a class="text-decoration-none" th:href="@{/notifications/{id}(id=${item.id}, page=${notificationPage.number})}"
+                       th:text="${item.title}">Tiêu đề thông báo</a>
+                </h2>
+                <p class="text-secondary text-truncate mb-3" th:text="${item.body}">Nội dung thông báo</p>
+                <a class="small fw-semibold" th:href="@{/notifications/{id}(id=${item.id}, page=${notificationPage.number})}">
+                    Xem chi tiết <span aria-hidden="true">→</span>
+                </a>
+            </div>
+        </article>
+    </div>
+
+    <nav th:unless="${notificationPage.empty}" class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-4"
+         aria-label="Phân trang thông báo">
+        <span class="small text-secondary" th:text="|Trang ${notificationPage.number + 1} / ${notificationPage.totalPages}|">Trang 1 / 1</span>
+        <ul class="pagination mb-0">
+            <li th:if="${notificationPage.hasPrevious()}" class="page-item">
+                <a class="page-link" th:href="@{/notifications(page=${notificationPage.number - 1})}" rel="prev">Trang trước</a>
+            </li>
+            <li th:unless="${notificationPage.hasPrevious()}" class="page-item disabled">
+                <span class="page-link" aria-disabled="true">Trang trước</span>
+            </li>
+            <li th:if="${notificationPage.hasNext()}" class="page-item">
+                <a class="page-link" th:href="@{/notifications(page=${notificationPage.number + 1})}" rel="next">Trang sau</a>
+            </li>
+            <li th:unless="${notificationPage.hasNext()}" class="page-item disabled">
+                <span class="page-link" aria-disabled="true">Trang sau</span>
+            </li>
+        </ul>
+    </nav>
+    <p class="small text-secondary mt-3 mb-0">Thời gian hiển thị theo múi giờ Việt Nam (UTC+7).</p>
+</section>
+</body>
+</html>
