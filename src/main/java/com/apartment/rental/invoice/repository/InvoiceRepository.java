@@ -2,6 +2,7 @@ package com.apartment.rental.invoice.repository;
 
 import com.apartment.rental.invoice.entity.Invoice;
 import com.apartment.rental.invoice.entity.InvoiceStatus;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -9,6 +10,7 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -39,4 +41,16 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select invoice from Invoice invoice where invoice.id = :id")
     Optional<Invoice> findByIdForUpdate(@Param("id") Long id);
+
+    @Modifying
+    @Query("""
+        update Invoice invoice
+        set invoice.status = :overdueStatus, invoice.updatedAt = :now
+        where invoice.status = :unpaidStatus and invoice.dueAt <= :now
+        """)
+    int markUnpaidInvoicesOverdue(
+        @Param("now") Instant now,
+        @Param("unpaidStatus") InvoiceStatus unpaidStatus,
+        @Param("overdueStatus") InvoiceStatus overdueStatus
+    );
 }

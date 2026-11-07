@@ -145,6 +145,32 @@ h1, h2, h3, .brand, .metric-value {
 .inactive { background: #d6c7a7; }
 .list-group, .table { --bs-list-group-bg: white; --bs-table-bg: white; }
 
+.room-actions-heading,
+.room-actions-cell {
+    min-width: 13.5rem;
+}
+
+.room-actions {
+    display: grid;
+    grid-template-columns: 4rem 9rem;
+    align-items: center;
+    justify-content: end;
+    gap: .5rem;
+    width: max-content;
+    margin-left: auto;
+}
+
+.room-action-form { margin: 0; }
+
+.room-action-control {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 2rem;
+    white-space: nowrap;
+}
+
 /* Customer home */
 .customer-sidebar { --bs-offcanvas-width: 17.5rem; }
 .customer-workspace { min-width: 0; }
