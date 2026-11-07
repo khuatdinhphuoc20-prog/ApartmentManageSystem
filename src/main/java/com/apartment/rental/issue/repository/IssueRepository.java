@@ -55,5 +55,32 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
             @Param("tenantId") Long tenantId
     );
 
+    @Query("""
+            SELECT i FROM Issue i
+            JOIN FETCH i.contract c
+            JOIN FETCH c.room r
+            JOIN FETCH i.reporter u
+            LEFT JOIN FETCH i.handledByUser h
+            WHERE (:status IS NULL OR i.status = :status)
+            ORDER BY
+                CASE i.status
+                    WHEN com.apartment.rental.issue.entity.IssueStatus.OPEN THEN 1
+                    WHEN com.apartment.rental.issue.entity.IssueStatus.IN_PROGRESS THEN 2
+                    ELSE 3
+                END ASC,
+                i.createdAt DESC
+            """)
+    List<Issue> findAllForAdmin(@Param("status") IssueStatus status);
+
+    @Query("""
+            SELECT i FROM Issue i
+            JOIN FETCH i.contract c
+            JOIN FETCH c.room r
+            JOIN FETCH i.reporter u
+            LEFT JOIN FETCH i.handledByUser h
+            WHERE i.id = :issueId
+            """)
+    Optional<Issue> findAdminDetailById(@Param("issueId") Long issueId);
+
     long countByStatusIn(Collection<IssueStatus> statuses);
 }

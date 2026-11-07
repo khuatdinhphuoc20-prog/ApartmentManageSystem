@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/admin :: layout('Chi tiết phản ánh', 'issues', ~{::content})}">
+<body>
+<div th:fragment="content" class="container-fluid py-4 px-3 px-sm-4 px-xl-5">
+    <div class="mb-3">
+        <a th:href="@{/admin/issues}" class="text-decoration-none small fw-semibold">
+            &larr; Quay lại danh sách phản ánh
+        </a>
+    </div>
+
+    <div th:if="${param.updated}" class="alert alert-success small" role="alert">
+        Cập nhật trạng thái và phản hồi xử lý thành công!
+    </div>
+
+    <div th:if="${error}" class="alert alert-danger small" role="alert" th:text="${error}"></div>
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-7">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+                        <div>
+                            <span class="text-secondary small fw-semibold" th:text="|Phản ánh #${issue.id}|">#1</span>
+                            <h1 class="h4 fw-bold mt-1 mb-0" th:text="${issue.title}">Tiêu đề</h1>
+                        </div>
+                        <div>
+                            <span th:if="${issue.status.name() == 'OPEN'}"
+                                  class="badge text-bg-warning fs-6">Mới gửi (OPEN)</span>
+                            <span th:if="${issue.status.name() == 'IN_PROGRESS'}"
+                                  class="badge text-bg-primary fs-6">Đang xử lý (IN_PROGRESS)</span>
+                            <span th:if="${issue.status.name() == 'RESOLVED'}"
+                                  class="badge text-bg-success fs-6">Đã giải quyết (RESOLVED)</span>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 py-3 border-top border-bottom mb-4 small">
+                        <div class="col-12 col-sm-6">
+                            <div class="text-secondary">Phòng / Hợp đồng</div>
+                            <div class="fw-semibold">
+                                <span th:text="|Phòng ${issue.roomCode} (Tầng ${issue.floorNumber})|"></span>
+                                <span class="text-secondary" th:text="| · HĐ #${issue.contractId} (${issue.contractStatus})|"></span>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <div class="text-secondary">Người thuê gửi yêu cầu</div>
+                            <div class="fw-semibold" th:text="|${issue.reporterFullName} · ${issue.reporterPhone}|"></div>
+                            <div class="text-secondary" th:text="${issue.reporterEmail}"></div>
+                        </div>
+                        <div class="col-12 col-sm-4">
+                            <div class="text-secondary">Thời điểm gửi</div>
+                            <div class="fw-semibold"
+                                 th:text="${#temporals.format(issue.createdAt.atZone(T(java.time.ZoneId).of('Asia/Ho_Chi_Minh')), 'dd/MM/yyyy HH:mm')}">
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-4">
+                            <div class="text-secondary">Bắt đầu xử lý</div>
+                            <div class="fw-semibold" th:if="${issue.inProgressAt != null}"
+                                 th:text="${#temporals.format(issue.inProgressAt.atZone(T(java.time.ZoneId).of('Asia/Ho_Chi_Minh')), 'dd/MM/yyyy HH:mm')}">
+                            </div>
+                            <div class="text-secondary" th:if="${issue.inProgressAt == null}">Chưa tiếp nhận</div>
+                        </div>
+                        <div class="col-12 col-sm-4">
+                            <div class="text-secondary">Giải quyết xong</div>
+                            <div class="fw-semibold text-success" th:if="${issue.resolvedAt != null}"
+                                 th:text="${#temporals.format(issue.resolvedAt.atZone(T(java.time.ZoneId).of('Asia/Ho_Chi_Minh')), 'dd/MM/yyyy HH:mm')}">
+                            </div>
+                            <div class="text-secondary" th:if="${issue.resolvedAt == null}">Chưa hoàn tất</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h2 class="h6 fw-bold mb-2">Mô tả chi tiết từ người thuê</h2>
+                        <div class="p-3 bg-light rounded border small" style="white-space: pre-wrap;"
+                             th:text="${issue.description}"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h2 class="h5 fw-bold mb-1">Cập nhật xử lý</h2>
+                    <p class="text-secondary small mb-4">
+                        Chuyển trạng thái theo trình tự <strong>OPEN &rarr; IN_PROGRESS &rarr; RESOLVED</strong> và ghi nhận kết quả xử lý cho người thuê.
+                    </p>
+
+                    <div th:if="${issue.status.name() == 'RESOLVED'}" class="alert alert-success small">
+                        Yêu cầu này đã được giải quyết hoàn tất (<strong>RESOLVED</strong>).
+                        <div class="mt-2" th:if="${issue.adminResponse != null}">
+                            <strong>Phản hồi đã lưu:</strong>
+                            <div class="mt-1" style="white-space: pre-wrap;" th:text="${issue.adminResponse}"></div>
+                        </div>
+                    </div>
+
+                    <form th:if="${issue.status.name() != 'RESOLVED'}"
+                          th:action="@{/admin/issues/{id}(id=${issue.id})}"
+                          th:object="${updateForm}" method="post" novalidate>
+
+                        <div class="mb-3">
+                            <label for="status" class="form-label small fw-semibold">
+                                Trạng thái tiếp theo <span class="text-danger">*</span>
+                            </label>
+                            <select id="status" th:field="*{status}"
+                                    class="form-select" th:classappend="${#fields.hasErrors('status')} ? 'is-invalid'">
+                                <option th:if="${issue.status.name() == 'OPEN'}"
+                                        value="IN_PROGRESS">
+                                    Tiếp nhận & Đang xử lý (IN_PROGRESS)
+                                </option>
+                                <option th:if="${issue.status.name() == 'IN_PROGRESS'}"
+                                        value="IN_PROGRESS">
+                                    Giữ trạng thái Đang xử lý (Cập nhật phản hồi)
+                                </option>
+                                <option th:if="${issue.status.name() == 'IN_PROGRESS'}"
+                                        value="RESOLVED">
+                                    Đã giải quyết xong (RESOLVED)
+                                </option>
+                            </select>
+                            <div class="invalid-feedback" th:errors="*{status}"></div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="adminResponse" class="form-label small fw-semibold">
+                                Phản hồi của chủ trọ (Admin)
+                            </label>
+                            <textarea id="adminResponse" th:field="*{adminResponse}" rows="5" maxlength="4000"
+                                      class="form-control" th:classappend="${#fields.hasErrors('adminResponse')} ? 'is-invalid'"
+                                      placeholder="Nhập tiến độ kiểm tra, phương án sửa chữa hoặc kết quả nghiệm thu..."></textarea>
+                            <div class="invalid-feedback" th:errors="*{adminResponse}"></div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            Lưu cập nhật
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

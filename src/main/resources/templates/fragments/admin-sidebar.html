@@ -21,7 +21,7 @@
             <div class="nav-section mt-3">Vận hành</div>
             <th:block th:replace="~{fragments/admin-sidebar :: item('billing', 'Kỳ thu & hóa đơn', 'receipt', @{/admin/billing})}"></th:block>
             <th:block th:replace="~{fragments/admin-sidebar :: item('collections', 'Thu tiền & công nợ', 'wallet', @{/admin/payment/reconciliation})}"></th:block>
-            <th:block th:replace="~{fragments/admin-sidebar :: item('issues', 'Phản ánh', 'message', ${null})}"></th:block>
+            <th:block th:replace="~{fragments/admin-sidebar :: item('issues', 'Phản ánh', 'message', @{/admin/issues})}"></th:block>
             <th:block th:replace="~{fragments/admin-sidebar :: item('notifications', 'Thông báo', 'bell', ${null})}"></th:block>
         </nav>
     </div>
