@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/customer :: layout('Chi tiết phản ánh', 'issues', ~{::content})}">
+<body>
+<div th:fragment="content" class="container py-4 py-md-5 px-3 px-sm-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-9 col-xl-8">
+            <div class="mb-3">
+                <a th:href="@{/issues}" class="text-decoration-none small fw-semibold">
+                    &larr; Quay lại danh sách phản ánh
+                </a>
+            </div>
+
+            <div th:if="${param.created}" class="alert alert-success small" role="alert">
+                Đã gửi phản ánh thành công! Chủ trọ sẽ sớm tiếp nhận và phản hồi yêu cầu của bạn.
+            </div>
+
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4 p-sm-5">
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+                        <div>
+                            <span class="text-secondary small fw-semibold" th:text="|Phản ánh #${issue.id}|">#1</span>
+                            <h1 class="h4 fw-bold mt-1 mb-0" th:text="${issue.title}">Tiêu đề phản ánh</h1>
+                        </div>
+                        <div>
+                            <span th:if="${issue.status.name() == 'OPEN'}"
+                                  class="badge text-bg-warning fs-6">Mới gửi (OPEN)</span>
+                            <span th:if="${issue.status.name() == 'IN_PROGRESS'}"
+                                  class="badge text-bg-primary fs-6">Đang xử lý (IN_PROGRESS)</span>
+                            <span th:if="${issue.status.name() == 'RESOLVED'}"
+                                  class="badge text-bg-success fs-6">Đã giải quyết (RESOLVED)</span>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 py-3 border-top border-bottom mb-4 small">
+                        <div class="col-12 col-sm-4">
+                            <div class="text-secondary">Phòng / Hợp đồng</div>
+                            <div class="fw-semibold">
+                                <span th:text="|Phòng ${issue.roomCode} (Tầng ${issue.floorNumber})|"></span>
+                                <span class="text-secondary" th:text="| · HĐ #${issue.contractId}|"></span>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-4">
+                            <div class="text-secondary">Thời điểm gửi</div>
+                            <div class="fw-semibold"
+                                 th:text="${#temporals.format(issue.createdAt.atZone(T(java.time.ZoneId).of('Asia/Ho_Chi_Minh')), 'dd/MM/yyyy HH:mm')}">
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-4">
+                            <div class="text-secondary">Tiến độ xử lý</div>
+                            <div th:if="${issue.resolvedAt != null}" class="fw-semibold text-success">
+                                Hoàn tất:
+                                <span th:text="${#temporals.format(issue.resolvedAt.atZone(T(java.time.ZoneId).of('Asia/Ho_Chi_Minh')), 'dd/MM/yyyy HH:mm')}"></span>
+                            </div>
+                            <div th:if="${issue.resolvedAt == null and issue.inProgressAt != null}" class="fw-semibold text-primary">
+                                Tiếp nhận:
+                                <span th:text="${#temporals.format(issue.inProgressAt.atZone(T(java.time.ZoneId).of('Asia/Ho_Chi_Minh')), 'dd/MM/yyyy HH:mm')}"></span>
+                            </div>
+                            <div th:if="${issue.inProgressAt == null}" class="text-secondary">
+                                Đang chờ chủ trọ tiếp nhận
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="h6 fw-bold mb-2">Nội dung phản ánh của bạn</h2>
+                        <div class="p-3 bg-light rounded border small" style="white-space: pre-wrap;"
+                             th:text="${issue.description}"></div>
+                    </div>
+
+                    <div>
+                        <h2 class="h6 fw-bold mb-2">Phản hồi từ chủ trọ (Admin)</h2>
+                        <div th:if="${issue.adminResponse != null and !#strings.isEmpty(issue.adminResponse)}"
+                             class="p-3 bg-success-subtle border border-success-subtle rounded small"
+                             style="white-space: pre-wrap;"
+                             th:text="${issue.adminResponse}"></div>
+                        <div th:if="${issue.adminResponse == null or #strings.isEmpty(issue.adminResponse)}"
+                             class="p-3 bg-light rounded border text-secondary small fst-italic">
+                            Chủ trọ chưa cập nhật phản hồi cho yêu cầu này.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
