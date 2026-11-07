@@ -25,7 +25,7 @@ import org.hibernate.type.SqlTypes;
 @Setter
 @Entity
 @Table(name = "contract_co_occupants")
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor(access = AccessLevel.PUBLIC)
 public class ContractCoOccupant {
 
     @Id
