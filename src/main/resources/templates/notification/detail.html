@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{${notificationLayout} :: layout('Chi tiết thông báo', 'notifications', ~{::#notification-content})}">
+<body>
+<section id="notification-content" class="pb-4"
+         th:classappend="${notificationAdmin ? '' : 'container py-4 py-lg-5'}">
+    <a class="d-inline-block text-decoration-none mb-4" th:href="@{/notifications(page=${inboxPage})}">
+        <span aria-hidden="true">←</span> Về hộp thư
+    </a>
+    <div th:if="${notificationMessage}" class="alert alert-success" role="status" th:text="${notificationMessage}"></div>
+
+    <article class="card">
+        <div class="card-body p-4 p-lg-5">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                <span class="badge" th:classappend="${notification.status.name() == 'UNREAD' ? 'text-bg-primary' : 'text-bg-light border'}"
+                      th:text="${notification.status.name() == 'UNREAD' ? 'Chưa đọc' : 'Đã đọc'}">Chưa đọc</span>
+                <span class="small text-secondary"
+                      th:text="${notification.sourceType.name() == 'MANUAL' ? 'Từ quản lý' : 'Hệ thống'}">Hệ thống</span>
+            </div>
+            <h1 class="h2 fw-semibold text-break mb-3" th:text="${notification.title}">Tiêu đề thông báo</h1>
+            <dl class="small text-secondary mb-4">
+                <div class="d-flex flex-wrap gap-2">
+                    <dt class="fw-normal">Đã gửi:</dt>
+                    <dd class="mb-1"><time th:datetime="${notification.createdAt}"
+                        th:text="${#temporals.format(notification.createdAt.atZone(notificationZone), 'dd/MM/yyyy HH:mm')}">Thời gian gửi</time></dd>
+                </div>
+                <div th:if="${notification.readAt != null}" class="d-flex flex-wrap gap-2">
+                    <dt class="fw-normal">Đã đọc:</dt>
+                    <dd class="mb-1"><time th:datetime="${notification.readAt}"
+                        th:text="${#temporals.format(notification.readAt.atZone(notificationZone), 'dd/MM/yyyy HH:mm')}">Thời gian đọc</time></dd>
+                </div>
+            </dl>
+            <div class="border-top pt-4" style="white-space: pre-wrap; overflow-wrap: anywhere;"
+                 th:text="${notification.body}">Nội dung thông báo</div>
+            <div class="border-top mt-4 pt-4">
+                <form th:if="${notification.status.name() == 'UNREAD'}"
+                      th:action="@{/notifications/{id}/read(id=${notification.id})}" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <input type="hidden" name="page" th:value="${inboxPage}">
+                    <button type="submit" class="btn btn-primary">Đánh dấu đã đọc</button>
+                </form>
+                <p th:if="${notification.status.name() == 'READ'}" class="text-secondary mb-0">Bạn đã đánh dấu thông báo này là đã đọc.</p>
+            </div>
+        </div>
+    </article>
+    <p class="small text-secondary mt-3 mb-0">Thời gian hiển thị theo múi giờ Việt Nam (UTC+7).</p>
+</section>
+</body>
+</html>

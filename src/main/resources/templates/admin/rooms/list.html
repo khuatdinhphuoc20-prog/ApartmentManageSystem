@@ -48,7 +48,7 @@
                         <th>Sức chứa</th>
                         <th>Giá niêm yết / tháng</th>
                         <th>Trạng thái</th>
-                        <th class="text-end">Hành động</th>
+                        <th class="text-end room-actions-heading">Hành động</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -66,16 +66,22 @@
                             <span th:if="${r.status.name() == 'RENTED'}" class="badge bg-warning text-dark">Đang thuê</span>
                             <span th:if="${r.status.name() == 'INACTIVE'}" class="badge bg-secondary">Tạm ngưng</span>
                         </td>
-                        <td class="text-end">
-                            <a th:href="@{/admin/rooms/{id}/edit(id=${r.id})}" class="btn btn-sm btn-outline-primary me-1">Sửa</a>
-                            
-                            <!-- Nút Toggle đóng/mở phòng trống (UC08) -->
-                            <form th:if="${r.status.name() != 'RENTED'}" th:action="@{/admin/rooms/{id}/toggle-status(id=${r.id})}" method="post" class="d-inline">
-                                <button type="submit" class="btn btn-sm"
-                                        th:classappend="${r.status.name() == 'AVAILABLE'} ? 'btn-outline-danger' : 'btn-outline-success'"
-                                        th:text="${r.status.name() == 'AVAILABLE'} ? 'Đóng phòng' : 'Mở phòng'"></button>
-                            </form>
-                            <span th:if="${r.status.name() == 'RENTED'}" class="badge bg-light text-muted">Đang có người ở</span>
+                        <td class="room-actions-cell">
+                            <div class="room-actions">
+                                <a th:href="@{/admin/rooms/{id}/edit(id=${r.id})}"
+                                   class="btn btn-sm btn-outline-primary room-action-control">Sửa</a>
+
+                                <!-- Nút Toggle đóng/mở phòng trống (UC08) -->
+                                <form th:if="${r.status.name() != 'RENTED'}"
+                                      th:action="@{/admin/rooms/{id}/toggle-status(id=${r.id})}"
+                                      method="post" class="room-action-form">
+                                    <button type="submit" class="btn btn-sm room-action-control"
+                                            th:classappend="${r.status.name() == 'AVAILABLE'} ? 'btn-outline-danger' : 'btn-outline-success'"
+                                            th:text="${r.status.name() == 'AVAILABLE'} ? 'Đóng phòng' : 'Mở phòng'"></button>
+                                </form>
+                                <span th:if="${r.status.name() == 'RENTED'}"
+                                      class="badge bg-light text-muted room-action-control">Đang có người ở</span>
+                            </div>
                         </td>
                     </tr>
                 </tbody>

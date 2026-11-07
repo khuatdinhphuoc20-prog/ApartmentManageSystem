@@ -14,11 +14,27 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-/** Repository queries used by contract management and local billing workflows. */
+/** Repository queries for contract management, regular billing, and settlement. */
 @Repository
 public interface ContractRepository extends JpaRepository<Contract, Long> {
 
-    // Billing workflow from the local branch.
+    // Candidate selection used by the settlement workflow.
+    @EntityGraph(attributePaths = {"room", "tenant"})
+    @Query("""
+        select c from Contract c
+        where c.status <> :cancelled
+          and c.startDate < :periodEnd
+          and coalesce(c.effectiveEndDate, c.plannedEndDate) > :periodStart
+          and (c.finalBillingPeriodEndDate is null or c.finalBillingPeriodEndDate <> :periodEnd)
+        order by c.room.roomCode, c.id
+        """)
+    List<Contract> findBillingCandidates(
+        @Param("periodStart") LocalDate periodStart,
+        @Param("periodEnd") LocalDate periodEnd,
+        @Param("cancelled") ContractStatus cancelled
+    );
+
+    // Regular billing workflow from the local branch.
     @EntityGraph(attributePaths = {"room", "tenant"})
     @Query("""
         select c from Contract c
@@ -41,7 +57,7 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     @Query("select c from Contract c where c.id = :id")
     Optional<Contract> findByIdForBillingUpdate(@Param("id") Long id);
 
-    // Contract access and lifecycle queries from main.
+    // Contract access and lifecycle queries.
     List<Contract> findAllByTenant_IdOrderByCreatedAtDesc(Long tenantId);
 
     Optional<Contract> findByIdAndTenant_Id(Long contractId, Long tenantId);
@@ -71,7 +87,7 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
         ORDER BY c.startDate DESC, c.createdAt DESC
         """)
     List<Contract> searchContractsForAdmin(
-            @Param("keyword") String keyword,
-            @Param("status") ContractStatus status
+        @Param("keyword") String keyword,
+        @Param("status") ContractStatus status
     );
 }
