@@ -18,10 +18,10 @@
             <div class="nav-section mt-3">Góc người thuê</div>
             <th:block th:replace="~{fragments/customer-sidebar :: item('profile', 'Hồ sơ của tôi', 'people', @{/profile}, ${active})}"></th:block>
             <th:block th:replace="~{fragments/customer-sidebar :: item('applications', 'Đơn thuê của tôi', 'clipboard', @{/customer/applications}, ${active})}"></th:block>
-            <th:block th:replace="~{fragments/customer-sidebar :: item('contracts', 'Hợp đồng của tôi', 'file', ${null}, ${active})}"></th:block>
+            <th:block th:replace="~{fragments/customer-sidebar :: item('contracts', 'Hợp đồng của tôi', 'file', @{/customer/contracts}, ${active})}"></th:block>
             <th:block th:replace="~{fragments/customer-sidebar :: item('invoices', 'Hóa đơn & thanh toán', 'receipt', @{/customer/invoices}, ${active})}"></th:block>
             <th:block th:replace="~{fragments/customer-sidebar :: item('issues', 'Phản ánh của tôi', 'message', ${null}, ${active})}"></th:block>
-            <th:block th:replace="~{fragments/customer-sidebar :: item('notifications', 'Thông báo của tôi', 'bell', ${null}, ${active})}"></th:block>
+            <th:block th:replace="~{fragments/customer-sidebar :: item('notifications', 'Thông báo của tôi', 'bell', @{/notifications}, ${active})}"></th:block>
         </nav>
     </div>
 </aside>
