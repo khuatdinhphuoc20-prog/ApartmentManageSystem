@@ -13,15 +13,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-/** Repository owned by the Room module (M02). */
 @Repository
 public interface RoomRepository extends JpaRepository<Room, Long>, JpaSpecificationExecutor<Room> {
 
-    Optional<Room> findByRoomCode(String roomCode);
-
     boolean existsByRoomCode(String roomCode);
-
-    List<Room> findByStatus(RoomStatus status);
 
     long countByStatus(RoomStatus status);
 
