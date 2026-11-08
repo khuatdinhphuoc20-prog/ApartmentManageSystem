@@ -13,35 +13,35 @@
     </div>
     <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
         <h2 class="h4 mb-0">Chỉ số quản lý</h2>
-        <span class="badge sample-label">Dữ liệu minh họa</span>
     </div>
     <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4">
         <div class="col">
             <div class="card h-100 metric-card"><div class="card-body">
                 <span class="icon-tile "><svg th:replace="~{fragments/shared :: icon('building')}"></svg></span>
                 <h3 class="metric-label">Tổng số phòng</h3>
-                <p class="metric-value mb-0">24 <small>phòng</small></p>
+                <p class="metric-value mb-0"><span th:text="${dashboard.totalRooms}">0</span> <small>phòng</small></p>
             </div></div>
         </div>
         <div class="col">
             <div class="card h-100 metric-card"><div class="card-body">
                 <span class="icon-tile "><svg th:replace="~{fragments/shared :: icon('wallet')}"></svg></span>
                 <h3 class="metric-label">Tổng tiền đã thu</h3>
-                <p class="metric-value mb-0">48.600.000 <small>đ</small></p>
+                <p class="metric-value mb-0"><span th:text="${#numbers.formatInteger(dashboard.paidTotal, 1, 'COMMA')}">0</span> <small>đ</small></p>
             </div></div>
         </div>
         <div class="col">
             <div class="card h-100 metric-card"><div class="card-body">
                 <span class="icon-tile amber"><svg th:replace="~{fragments/shared :: icon('receipt')}"></svg></span>
                 <h3 class="metric-label">Hóa đơn chưa thu</h3>
-                <p class="metric-value mb-0">7 <small>hóa đơn</small></p>
+                <p class="metric-value mb-0"><span th:text="${dashboard.outstandingInvoices}">0</span> <small>hóa đơn</small></p>
             </div></div>
         </div>
         <div class="col">
             <div class="card h-100 metric-card"><div class="card-body">
                 <span class="icon-tile terracotta"><svg th:replace="~{fragments/shared :: icon('message')}"></svg></span>
                 <h3 class="metric-label">Phản ánh chưa xử lý xong</h3>
-                <p class="metric-value mb-0">3 <small>phản ánh</small></p>
+                <p class="metric-value mb-0"><span th:text="${dashboard.unresolvedIssues}">0</span> <small>phản ánh</small></p>
+                <p class="small text-secondary mb-0">Gồm phản ánh mới và đang xử lý.</p>
             </div></div>
         </div>
     </div>
@@ -49,20 +49,21 @@
         <div class="col-xl-7">
             <section class="card h-100"><div class="card-body p-4">
                 <h2 class="h5 mb-3">Tình trạng phòng</h2>
-                <div class="progress-stacked rounded-pill mb-4" aria-hidden="true">
-                    <div class="progress" style="width:25%"><div class="progress-bar available"></div></div>
-                    <div class="progress" style="width:66.6667%"><div class="progress-bar rented"></div></div>
-                    <div class="progress flex-grow-1"><div class="progress-bar inactive"></div></div>
+                <div class="progress-stacked rounded-pill mb-4" aria-hidden="true" th:if="${dashboard.totalRooms > 0}">
+                    <div class="progress" th:style="|width:${dashboard.availablePercent}%|"><div class="progress-bar available"></div></div>
+                    <div class="progress" th:style="|width:${dashboard.rentedPercent}%|"><div class="progress-bar rented"></div></div>
+                    <div class="progress" th:style="|width:${dashboard.inactivePercent}%|"><div class="progress-bar inactive"></div></div>
                 </div>
+                <p class="text-secondary mb-3" th:if="${dashboard.totalRooms == 0}">Chưa có phòng để thống kê.</p>
                 <ul class="list-group list-group-flush">
                     <li class="list-group-item px-0 d-flex align-items-center gap-2">
-                        <span class="legend-dot available"></span>Còn cho thuê<strong class="ms-auto">6 phòng</strong>
+                        <span class="legend-dot available"></span>Còn cho thuê<strong class="ms-auto" th:text="|${dashboard.availableRooms} phòng|">0 phòng</strong>
                     </li>
                     <li class="list-group-item px-0 d-flex align-items-center gap-2">
-                        <span class="legend-dot rented"></span>Đã cho thuê<strong class="ms-auto">16 phòng</strong>
+                        <span class="legend-dot rented"></span>Đã cho thuê<strong class="ms-auto" th:text="|${dashboard.rentedRooms} phòng|">0 phòng</strong>
                     </li>
                     <li class="list-group-item px-0 d-flex align-items-center gap-2">
-                        <span class="legend-dot inactive"></span>Tạm ngừng cho thuê<strong class="ms-auto">2 phòng</strong>
+                        <span class="legend-dot inactive"></span>Tạm ngừng cho thuê<strong class="ms-auto" th:text="|${dashboard.inactiveRooms} phòng|">0 phòng</strong>
                     </li>
                 </ul>
             </div></section>
@@ -71,18 +72,18 @@
             <section class="card h-100"><div class="card-body p-4">
                 <h2 class="h5">Chi tiết hóa đơn chưa thu</h2>
                 <table class="table align-middle mb-0">
-                    <caption class="visually-hidden">Số hóa đơn minh họa theo trạng thái</caption>
+                    <caption class="visually-hidden">Số hóa đơn chưa thu theo trạng thái</caption>
                     <thead><tr><th scope="col">Trạng thái</th><th scope="col" class="text-end">Số hóa đơn</th></tr></thead>
                     <tbody>
-                    <tr><th scope="row"><span class="badge text-bg-light">Chưa thanh toán</span></th><td class="text-end">5</td></tr>
-                    <tr><th scope="row"><span class="badge text-bg-warning">Quá hạn</span></th><td class="text-end">2</td></tr>
+                    <tr><th scope="row"><span class="badge text-bg-light">Chưa thanh toán</span></th><td class="text-end" th:text="${dashboard.unpaidInvoices}">0</td></tr>
+                    <tr><th scope="row"><span class="badge text-bg-warning">Quá hạn</span></th><td class="text-end" th:text="${dashboard.overdueInvoices}">0</td></tr>
                     </tbody>
-                    <tfoot><tr><th scope="row">Tổng cộng</th><td class="text-end fw-bold">7</td></tr></tfoot>
+                    <tfoot><tr><th scope="row">Tổng cộng</th><td class="text-end fw-bold" th:text="${dashboard.outstandingInvoices}">0</td></tr></tfoot>
                 </table>
             </div></section>
         </div>
     </div>
-    <p class="small text-secondary mt-3 mb-0">Toàn bộ số liệu trên trang là ví dụ bố cục. Các module sẽ cung cấp số liệu thực khi tích hợp.</p>
+    <p class="small text-secondary mt-3 mb-0">Số liệu phòng, hóa đơn và phản ánh được cập nhật khi tải lại trang.</p>
 </section>
 </body>
 </html>
