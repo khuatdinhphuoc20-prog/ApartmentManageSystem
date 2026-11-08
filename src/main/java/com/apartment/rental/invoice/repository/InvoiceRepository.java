@@ -2,6 +2,7 @@ package com.apartment.rental.invoice.repository;
 
 import com.apartment.rental.invoice.entity.Invoice;
 import com.apartment.rental.invoice.entity.InvoiceStatus;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -15,6 +16,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
+
+    long countByStatus(InvoiceStatus status);
+
+    @Query("select sum(invoice.totalAmount) from Invoice invoice where invoice.status = :status")
+    BigDecimal sumTotalAmountByStatus(@Param("status") InvoiceStatus status);
 
     boolean existsByBillingPeriod_Id(Long billingPeriodId);
 
