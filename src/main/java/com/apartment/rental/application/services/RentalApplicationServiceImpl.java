@@ -11,6 +11,8 @@ import com.apartment.rental.application.entity.RentalApplicationStatus;
 import com.apartment.rental.application.exception.RentalApplicationException;
 import com.apartment.rental.application.mapper.RentalApplicationMapper;
 import com.apartment.rental.application.repository.RentalApplicationRepository;
+import com.apartment.rental.contract.dto.request.CreateContractFromApplicationRequest;
+import com.apartment.rental.contract.service.ContractService;
 import com.apartment.rental.room.entity.Room;
 import com.apartment.rental.room.entity.RoomStatus;
 import jakarta.persistence.EntityManager;
@@ -36,6 +38,7 @@ public class RentalApplicationServiceImpl implements RentalApplicationService {
     private final RentalApplicationRepository applicationRepository;
     private final RentalApplicationMapper applicationMapper;
     private final EntityManager entityManager;
+    private final ContractService contractService;
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     @Override
@@ -62,23 +65,19 @@ public class RentalApplicationServiceImpl implements RentalApplicationService {
             );
         }
 
-        LocalDate endDate = null;
+        LocalDate endDate;
         if (request.getEndMonth() != null && request.getEndYear() != null) {
             endDate = LocalDate.of(request.getEndYear(), request.getEndMonth(), 10);
-        }
-
-        else if (request.getDurationMonths() != null && request.getDurationMonths() > 0) {
+        } else if (request.getEndMonth() != null || request.getEndYear() != null) {
+            throw new RentalApplicationException.Validation("Vui lòng chọn đầy đủ cả tháng và năm kết thúc, hoặc để cả hai ở tùy chọn mặc định.");
+        } else if (request.getDurationMonths() != null && request.getDurationMonths() > 0) {
             endDate = startDate.plusMonths(request.getDurationMonths()).withDayOfMonth(10);
             if (!endDate.isAfter(startDate)) {
                 endDate = endDate.plusMonths(1);
             }
-        }
-
-        else if (request.getRequestedEndDate() != null) {
+        } else if (request.getRequestedEndDate() != null) {
             endDate = request.getRequestedEndDate().withDayOfMonth(10);
-        }
-
-        else {
+        } else {
             endDate = startDate.plusMonths(1).withDayOfMonth(10);
             if (!endDate.isAfter(startDate)) {
                 endDate = endDate.plusMonths(1);
@@ -86,9 +85,7 @@ public class RentalApplicationServiceImpl implements RentalApplicationService {
         }
 
         if (!endDate.isAfter(startDate)) {
-            throw new RentalApplicationException.Validation(
-                    "Thời hạn thuê không hợp lệ: Ngày kết thúc (" + endDate + ") phải sau ngày bắt đầu (" + startDate + ")"
-            );
+            throw new RentalApplicationException.Validation("Ngày kết thúc (" + endDate + ") phải sau ngày bắt đầu (" + startDate + ")");
         }
 
         boolean hasPending = applicationRepository.existsByApplicantIdAndRoomIdAndStatus(
@@ -105,19 +102,18 @@ public class RentalApplicationServiceImpl implements RentalApplicationService {
         application.setRequestedStartDate(startDate);
         application.setRequestedEndDate(endDate);
         application.setStatus(RentalApplicationStatus.PENDING);
-        application.setProcessedAt(null);
-        application.setProcessedByUser(null);
-        application.setProcessingNote(null);
+
         RentalApplication saved = applicationRepository.save(application);
-        log.info("Application created successfully with ID: {} for user: {} on room: {}", saved.getId(), applicantId, room.getRoomCode());
+        log.info("Application #{} created for user {} on room {}", saved.getId(), applicantId, room.getRoomCode());
         return applicationMapper.toResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<RentalApplicationResponse> getMyApplications(Long applicantId) {
-        List<RentalApplication> applications = applicationRepository.findByApplicantIdOrderByCreatedAtDesc(applicantId);
-        return applicationMapper.toResponseList(applications);
+        return applicationMapper.toResponseList(
+                applicationRepository.findByApplicantIdOrderByCreatedAtDesc(applicantId)
+        );
     }
 
     @Override
@@ -133,13 +129,11 @@ public class RentalApplicationServiceImpl implements RentalApplicationService {
     public void withdrawApplication(Long applicationId, Long applicantId) {
         RentalApplication application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RentalApplicationException.NotFound(applicationId));
-
         if (!application.getApplicant().getId().equals(applicantId)) {
-            throw new RentalApplicationException.InvalidState("Bạn chỉ có thể rút lại đơn đăng ký của chính mình");
+            throw new RentalApplicationException.InvalidState("Bạn chỉ có thể rút đơn của chính mình");
         }
-
         if (application.getStatus() != RentalApplicationStatus.PENDING) {
-            throw new RentalApplicationException.InvalidState("Không thể rút đơn vì đơn đang ở trạng thái: " + application.getStatus());
+            throw new RentalApplicationException.InvalidState("Đơn không còn ở trạng thái chờ duyệt để rút");
         }
         User applicant = entityManager.getReference(User.class, applicantId);
         application.setStatus(RentalApplicationStatus.WITHDRAWN);
@@ -147,17 +141,15 @@ public class RentalApplicationServiceImpl implements RentalApplicationService {
         application.setProcessedByUser(applicant);
         application.setProcessingNote("Người thuê rút đơn");
         applicationRepository.save(application);
-        log.info("Application {} withdrawn by user {}", applicationId, applicantId);
+        log.info("Application #{} withdrawn by user {}", applicationId, applicantId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<RentalApplicationResponse> getApplicationsForAdmin(RentalApplicationFilterRequest filter) {
         Pageable pageable = PageRequest.of(Math.max(0, filter.getPage()), Math.max(1, filter.getSize()));
-        Page<RentalApplication> page = applicationRepository.findApplicationsForAdmin(
-                filter.getStatus(), filter.getRoomId(), pageable
-        );
-        return page.map(applicationMapper::toResponse);
+        return applicationRepository.findApplicationsForAdmin(filter.getStatus(), filter.getRoomId(), pageable)
+                .map(applicationMapper::toResponse);
     }
 
     @Override
@@ -166,7 +158,7 @@ public class RentalApplicationServiceImpl implements RentalApplicationService {
         RentalApplication application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RentalApplicationException.NotFound(applicationId));
         if (application.getStatus() != RentalApplicationStatus.PENDING) {
-            throw new RentalApplicationException.InvalidState("Chỉ có thể từ chối đơn đang chờ");
+            throw new RentalApplicationException.InvalidState("Chỉ có thể từ chối đơn đang chờ duyệt");
         }
         User admin = entityManager.getReference(User.class, adminId);
         application.setStatus(RentalApplicationStatus.REJECTED);
@@ -174,7 +166,7 @@ public class RentalApplicationServiceImpl implements RentalApplicationService {
         application.setProcessedByUser(admin);
         application.setProcessingNote(request.getReason());
         applicationRepository.save(application);
-        log.info("Application {} rejected by admin {} with reason: {}", applicationId, adminId, request.getReason());
+        log.info("Application #{} rejected by admin {}", applicationId, adminId);
     }
 
     @Override
@@ -189,9 +181,9 @@ public class RentalApplicationServiceImpl implements RentalApplicationService {
             app.setStatus(RentalApplicationStatus.REJECTED);
             app.setProcessedAt(now);
             app.setProcessedByUser(null);
-            app.setProcessingNote("Phòng đã được cho thuê");
+            app.setProcessingNote("Phòng đã được thuê");
             applicationRepository.save(app);
-            log.info("Auto-rejected competing application {} for room {}", app.getId(), roomId);
+            log.info("Auto-rejected competing application #{} for room {}", app.getId(), roomId);
         }
     }
 
@@ -202,7 +194,7 @@ public class RentalApplicationServiceImpl implements RentalApplicationService {
                 .orElseThrow(() -> new RentalApplicationException.NotFound(applicationId));
 
         if (application.getStatus() != RentalApplicationStatus.PENDING) {
-            throw new RentalApplicationException.InvalidState("Chỉ có thể chấp nhận đơn đang chờ");
+            throw new RentalApplicationException.InvalidState("Chỉ có thể duyệt đơn đang ở trạng thái chờ duyệt");
         }
 
         LocalDate today = LocalDate.now(BUSINESS_ZONE);
@@ -210,24 +202,27 @@ public class RentalApplicationServiceImpl implements RentalApplicationService {
             application.setStatus(RentalApplicationStatus.REJECTED);
             application.setProcessedAt(Instant.now().truncatedTo(ChronoUnit.MILLIS));
             application.setProcessedByUser(null);
-            application.setProcessingNote("Đơn đăng ký đã hết hạn do ngày bắt đầu đã qua.");
+            application.setProcessingNote("Đơn hết hạn do ngày bắt đầu thuê đã qua");
             applicationRepository.save(application);
-            throw new RentalApplicationException.InvalidState("Đơn đăng ký đã hết hạn do ngày bắt đầu đã qua.");
+            throw new RentalApplicationException.InvalidState("Đơn đã hết hạn do ngày bắt đầu thuê đã qua");
         }
 
-        Room room = application.getRoom();
-        if (room.getStatus() != RoomStatus.AVAILABLE) {
-            throw new RentalApplicationException.Conflict("Phòng không còn trống");
-        }
+        CreateContractFromApplicationRequest contractReq = new CreateContractFromApplicationRequest(
+                application.getId(),
+                application.getApplicant().getId(),
+                application.getRoom().getId(),
+                application.getRequestedStartDate(),
+                application.getRequestedEndDate()
+        );
+        contractService.createContractFromApplication(contractReq, adminId);
 
-        room.setStatus(RoomStatus.RENTED);
-        entityManager.merge(room);
         User admin = entityManager.getReference(User.class, adminId);
         application.setStatus(RentalApplicationStatus.APPROVED);
         application.setProcessedAt(Instant.now().truncatedTo(ChronoUnit.MILLIS));
         application.setProcessedByUser(admin);
+        application.setProcessingNote("Đã duyệt");
         applicationRepository.save(application);
-        rejectOtherPendingApplications(room.getId(), application.getId());
-        log.info("Application {} approved successfully by admin {}", applicationId, adminId);
+        rejectOtherPendingApplications(application.getRoom().getId(), application.getId());
+        log.info("WF-01 completed: Application #{} approved, Contract created for room {}", applicationId, application.getRoom().getRoomCode());
     }
 }

@@ -20,23 +20,42 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 
-    <!-- Thanh bộ lọc trạng thái (UC13) -->
+    <!-- Thanh bộ lọc theo Phòng và Trạng thái (UC13) -->
     <div class="card p-3 mb-4">
         <form th:action="@{/admin/applications}" method="get" class="row g-2 align-items-center">
+            <!-- 1. Lọc theo Phòng -->
             <div class="col-auto">
+                <label for="filterRoom" class="col-form-label small fw-semibold">Phòng:</label>
+            </div>
+            <div class="col-auto">
+                <select name="roomId" id="filterRoom" class="form-select form-select-sm">
+                    <option value="" th:selected="${filter.roomId == null}">-- Tất cả các phòng --</option>
+                    <option th:each="r : ${rooms}"
+                            th:value="${r.id}"
+                            th:text="|Phòng ${r.roomCode} (Tầng ${r.floorNumber})|"
+                            th:selected="${filter.roomId != null and filter.roomId == r.id}">
+                    </option>
+                </select>
+            </div>
+
+            <!-- 2. Lọc theo Trạng thái -->
+            <div class="col-auto ps-sm-2">
                 <label for="filterStatus" class="col-form-label small fw-semibold">Trạng thái:</label>
             </div>
             <div class="col-auto">
                 <select name="status" id="filterStatus" class="form-select form-select-sm">
-                    <option value="" th:selected="${filter.status == null}">Tất cả trạng thái</option>
+                    <option value="" th:selected="${filter.status == null}">-- Tất cả trạng thái --</option>
                     <option value="PENDING" th:selected="${filter.status?.name() == 'PENDING'}">Chờ duyệt (PENDING)</option>
                     <option value="APPROVED" th:selected="${filter.status?.name() == 'APPROVED'}">Đã duyệt (APPROVED)</option>
                     <option value="REJECTED" th:selected="${filter.status?.name() == 'REJECTED'}">Đã từ chối (REJECTED)</option>
                     <option value="WITHDRAWN" th:selected="${filter.status?.name() == 'WITHDRAWN'}">Khách rút (WITHDRAWN)</option>
                 </select>
             </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-sm btn-outline-primary">Lọc danh sách</button>
+
+            <!-- 3. Nút Lọc và Đặt lại -->
+            <div class="col-auto ms-auto d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary">Lọc danh sách</button>
+                <a th:href="@{/admin/applications}" class="btn btn-sm btn-outline-secondary">Đặt lại</a>
             </div>
         </form>
     </div>
@@ -119,6 +138,7 @@
                                             <strong>Hệ thống sẽ tự động:</strong>
                                             <ul class="mb-0 ps-3">
                                                 <li>Chuyển trạng thái phòng sang <strong>RENTED</strong>.</li>
+                                                <li>Tạo <strong>Hợp đồng</strong> trong hệ thống.</li>
                                                 <li>Tự động <strong>TỪ CHỐI</strong> tất cả các đơn chờ khác của phòng này.</li>
                                             </ul>
                                         </div>

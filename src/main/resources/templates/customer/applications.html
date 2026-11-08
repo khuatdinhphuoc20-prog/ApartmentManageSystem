@@ -8,7 +8,7 @@
             <h1 class="h3 fw-semibold mb-1">Đơn thuê của tôi</h1>
             <p class="text-secondary mb-0">Theo dõi trạng thái xét duyệt các yêu cầu đăng ký thuê phòng.</p>
         </div>
-        <a th:href="@{/rooms}" class="btn btn-outline-primary btn-sm">
+        <a th:href="@{/rooms}" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2">
             <svg th:replace="~{fragments/shared :: icon('building')}"></svg> Tìm thêm phòng
         </a>
     </header>
@@ -43,7 +43,7 @@
                         <span class="text-secondary small" th:text="|Tầng ${app.roomFloor}|"></span>
                     </div>
 
-                    <!-- Badge trạng thái (CSS xử lý trực tiếp ở View theo đúng chuẩn Frontend) -->
+                    <!-- Badge trạng thái -->
                     <div>
                         <span th:if="${app.status.name() == 'PENDING'}" class="badge bg-warning text-dark px-3 py-2">Chờ duyệt</span>
                         <span th:if="${app.status.name() == 'APPROVED'}" class="badge bg-success px-3 py-2">Đã duyệt</span>
@@ -71,17 +71,15 @@
                     </div>
                 </div>
 
-                <!-- Ghi chú xử lý -->
                 <div th:if="${app.processingNote != null}" class="alert alert-light border mt-3 mb-0 small">
                     <strong>Ghi chú:</strong>
                     <span th:if="${app.processingNote == 'Room rented to another contract'}">Phòng đã được thuê</span>
                     <span th:if="${app.processingNote == 'Withdrawn by applicant'}">Người thuê rút đơn</span>
                     <span th:if="${app.processingNote != 'Room rented to another contract' and app.processingNote != 'Withdrawn by applicant'}"
                           th:text="${app.processingNote}">
-    </span>
+                    </span>
                 </div>
 
-                <!-- Thao tác rút đơn (Chỉ cho phép khi còn PENDING theo BR-APP-03) -->
                 <div th:if="${app.canWithdraw}" class="d-flex justify-content-end mt-3 pt-2 border-top">
                     <form th:action="@{/customer/applications/{id}/withdraw(id=${app.id})}" method="post" onsubmit="return confirm('Bạn có chắc chắn muốn rút đơn đăng ký thuê này?');">
                         <button type="submit" class="btn btn-outline-danger btn-sm">Rút đơn</button>

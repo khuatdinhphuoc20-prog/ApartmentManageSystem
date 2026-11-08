@@ -1,13 +1,17 @@
 package com.apartment.rental.application.controller;
 
+import com.apartment.rental.account.security.CustomUserDetails;
 import com.apartment.rental.application.dto.RentalApplicationFilterRequest;
 import com.apartment.rental.application.dto.RentalApplicationRejectRequest;
 import com.apartment.rental.application.dto.RentalApplicationResponse;
 import com.apartment.rental.application.services.RentalApplicationService;
+import com.apartment.rental.room.dto.response.RoomResponse;
+import com.apartment.rental.room.service.RoomService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -22,46 +26,39 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AdminApplicationController {
     private final RentalApplicationService applicationService;
-    private final EntityManager entityManager;
+    //private final EntityManager entityManager;
+    private final RoomService roomService;
 
     @GetMapping
     public String listApplications(@ModelAttribute("filter") RentalApplicationFilterRequest filter, Model model) {
         Page<RentalApplicationResponse> pageResult = applicationService.getApplicationsForAdmin(filter);
+
+        List<RoomResponse> rooms = roomService.getAllRoomsForAdmin(null, null);
         model.addAttribute("pageResult", pageResult);
         model.addAttribute("filter", filter);
+        model.addAttribute("rooms", rooms);
         return "admin/applications";
     }
 
     @PostMapping("/{id}/approve")
-    public  String approve(@PathVariable long id, Principal principal, RedirectAttributes redirectAttributes) {
-        Long adminId = resolveAdminId(principal);
+    public String approve(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            RedirectAttributes redirectAttributes) {
+        Long adminId = userDetails.getUser().getId();
         applicationService.approveApplication(id, adminId);
-        redirectAttributes.addFlashAttribute("successMessage", "Application #" + id + " has been approved successfully!");
+        redirectAttributes.addFlashAttribute("successMessage", "Đã duyệt đơn thuê #" + id + " và tạo Hợp đồng thành công!");
         return "redirect:/admin/applications";
     }
-
     @PostMapping("/{id}/reject")
     public String reject(
-            @PathVariable Long id, @ModelAttribute RentalApplicationRejectRequest rejectRequest,
-            Principal principal, RedirectAttributes redirectAttributes){
-        Long adminId = resolveAdminId(principal);
+            @PathVariable Long id,
+            @ModelAttribute RentalApplicationRejectRequest rejectRequest,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            RedirectAttributes redirectAttributes) {
+        Long adminId = userDetails.getUser().getId();
         applicationService.rejectApplication(id, rejectRequest, adminId);
-        redirectAttributes.addFlashAttribute("successMessage", "Application #" + id + " has been rejected.");
+        redirectAttributes.addFlashAttribute("successMessage", "Đã từ chối đơn thuê #" + id + ".");
         return "redirect:/admin/applications";
-    }
-
-    //Hàm lấy admin
-    private Long resolveAdminId(Principal principal) {
-        if (principal != null) {
-            try {
-                List<Long> ids = entityManager.createQuery("SELECT u.id FROM User u WHERE u.email = :email", Long.class)
-                        .setParameter("email", principal.getName())
-                        .getResultList();
-                if (!ids.isEmpty()) {
-                    return ids.get(0);
-                }
-            } catch (Exception ignored) {}
-        }
-        return 1L; // Fallback Admin ID mặc định
     }
 }
