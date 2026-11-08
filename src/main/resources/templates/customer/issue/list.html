@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/customer :: layout('Phản ánh của tôi', 'issues', ~{::content})}">
+<body>
+<div th:fragment="content" class="container py-4 py-md-5 px-3 px-sm-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h4 fw-bold mb-1">Phản ánh của tôi</h1>
+            <p class="text-secondary small mb-0">
+                Theo dõi tiến độ xử lý các yêu cầu sửa chữa và lịch sử phản ánh của bạn.
+            </p>
+        </div>
+        <div th:if="${canCreateIssue}">
+            <a th:href="@{/issues/new}" class="btn btn-primary">
+                + Gửi phản ánh mới
+            </a>
+        </div>
+    </div>
+
+    <div th:if="${!canCreateIssue}" class="alert alert-warning small" role="alert">
+        Bạn hiện chưa có hợp đồng thuê phòng nào đang hiệu lực (<strong>ACTIVE</strong>).
+        Chỉ người đại diện có hợp đồng đang trong thời gian thuê mới có thể gửi phản ánh mới, nhưng bạn vẫn xem được toàn bộ lịch sử phản ánh trước đây.
+    </div>
+
+    <div th:if="${error}" class="alert alert-danger small" role="alert" th:text="${error}"></div>
+
+    <div th:if="${#lists.isEmpty(issues)}" class="card shadow-sm border-0">
+        <div class="card-body p-5 text-center text-secondary">
+            <p class="mb-2 fw-semibold">Bạn chưa gửi phản ánh hoặc yêu cầu sửa chữa nào.</p>
+            <p class="small mb-0" th:if="${canCreateIssue}">
+                Nhấn vào nút <strong>Gửi phản ánh mới</strong> ở góc trên nếu phòng của bạn cần hỗ trợ sửa chữa.
+            </p>
+        </div>
+    </div>
+
+    <div th:if="${!#lists.isEmpty(issues)}" class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Mã</th>
+                    <th>Phòng</th>
+                    <th>Tiêu đề</th>
+                    <th>Trạng thái</th>
+                    <th>Ngày gửi</th>
+                    <th>Phản hồi từ chủ trọ</th>
+                    <th class="text-end pe-4">Thao tác</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="item : ${issues}">
+                    <td class="ps-4 fw-semibold text-secondary" th:text="|#${item.id}|">#1</td>
+                    <td>
+                        <span class="fw-semibold" th:text="|Phòng ${item.roomCode}|">Phòng 101</span>
+                        <span th:if="${item.contractStatus == 'ENDED'}"
+                              class="badge bg-secondary-subtle text-secondary border ms-1">HĐ đã kết thúc</span>
+                    </td>
+                    <td>
+                        <a th:href="@{/issues/{id}(id=${item.id})}"
+                           class="fw-semibold text-decoration-none text-dark"
+                           th:text="${item.title}">Tiêu đề</a>
+                    </td>
+                    <td>
+                        <span th:if="${item.status.name() == 'OPEN'}"
+                              class="badge text-bg-warning">Mới gửi (OPEN)</span>
+                        <span th:if="${item.status.name() == 'IN_PROGRESS'}"
+                              class="badge text-bg-primary">Đang xử lý (IN_PROGRESS)</span>
+                        <span th:if="${item.status.name() == 'RESOLVED'}"
+                              class="badge text-bg-success">Đã giải quyết (RESOLVED)</span>
+                    </td>
+                    <td class="small text-secondary"
+                        th:text="${#temporals.format(item.createdAt.atZone(T(java.time.ZoneId).of('Asia/Ho_Chi_Minh')), 'dd/MM/yyyy HH:mm')}">
+                    </td>
+                    <td class="small">
+                        <span th:if="${item.adminResponse != null and !#strings.isEmpty(item.adminResponse)}"
+                              class="text-dark"
+                              th:text="${#strings.abbreviate(item.adminResponse, 50)}"></span>
+                        <span th:if="${item.adminResponse == null or #strings.isEmpty(item.adminResponse)}"
+                              class="text-secondary fst-italic">Chưa có phản hồi</span>
+                    </td>
+                    <td class="text-end pe-4">
+                        <a th:href="@{/issues/{id}(id=${item.id})}" class="btn btn-outline-secondary btn-sm">
+                            Xem chi tiết
+                        </a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>

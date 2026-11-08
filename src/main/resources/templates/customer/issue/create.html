@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/customer :: layout('Gửi phản ánh mới', 'issues', ~{::content})}">
+<body>
+<div th:fragment="content" class="container py-4 py-md-5 px-3 px-sm-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8 col-xl-7">
+            <div class="mb-3">
+                <a th:href="@{/issues}" class="text-decoration-none small fw-semibold">
+                    &larr; Quay lại danh sách phản ánh
+                </a>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4 p-sm-5">
+                    <h1 class="h4 fw-bold mb-1">Gửi yêu cầu sửa chữa / phản ánh</h1>
+                    <p class="text-secondary small mb-4">
+                        Mô tả rõ tình trạng thiết bị hoặc vấn đề tại phòng đang thuê để chủ trọ tiếp nhận và xử lý.
+                    </p>
+
+                    <div th:if="${error}" class="alert alert-danger small" role="alert" th:text="${error}"></div>
+
+                    <div th:if="${#lists.isEmpty(activeContracts)}" class="alert alert-warning small mb-0" role="alert">
+                        Bạn không có hợp đồng nào đang ở trạng thái <strong>ACTIVE</strong> nên không thể tạo phản ánh mới.
+                    </div>
+
+                    <form th:if="${!#lists.isEmpty(activeContracts)}"
+                          th:action="@{/issues}" th:object="${issueForm}" method="post" novalidate>
+                        <div class="mb-3">
+                            <label for="contractId" class="form-label small fw-semibold">
+                                Phòng đang thuê <span class="text-danger">*</span>
+                            </label>
+                            <select id="contractId" th:field="*{contractId}"
+                                    class="form-select" th:classappend="${#fields.hasErrors('contractId')} ? 'is-invalid'">
+                                <option value="" th:if="${#lists.size(activeContracts) > 1}">-- Chọn phòng cần phản ánh --</option>
+                                <option th:each="c : ${activeContracts}"
+                                        th:value="${c.contractId}"
+                                        th:text="|Phòng ${c.roomCode} (Tầng ${c.floorNumber}) · Hợp đồng #${c.contractId}|">
+                                </option>
+                            </select>
+                            <div class="invalid-feedback" th:errors="*{contractId}"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="title" class="form-label small fw-semibold">
+                                Tiêu đề <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" id="title" th:field="*{title}" maxlength="200"
+                                   class="form-control" th:classappend="${#fields.hasErrors('title')} ? 'is-invalid'"
+                                   placeholder="Ví dụ: Hỏng bình nóng lạnh / Rò nước bồn rửa">
+                            <div class="invalid-feedback" th:errors="*{title}"></div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="description" class="form-label small fw-semibold">
+                                Nội dung chi tiết <span class="text-danger">*</span>
+                            </label>
+                            <textarea id="description" th:field="*{description}" rows="5" maxlength="4000"
+                                      class="form-control" th:classappend="${#fields.hasErrors('description')} ? 'is-invalid'"
+                                      placeholder="Mô tả chi tiết hiện tượng, vị trí hỏng hóc và thời gian thuận tiện để kiểm tra..."></textarea>
+                            <div class="invalid-feedback" th:errors="*{description}"></div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a th:href="@{/issues}" class="btn btn-outline-secondary">Hủy</a>
+                            <button type="submit" class="btn btn-primary">Gửi phản ánh</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

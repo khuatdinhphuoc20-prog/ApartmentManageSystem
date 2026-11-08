@@ -17,7 +17,6 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -29,7 +28,7 @@ import org.hibernate.type.SqlTypes;
 @Setter
 @Entity
 @Table(name = "issues")
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 public class Issue {
 
     @Id
@@ -93,4 +92,3 @@ public class Issue {
     @Column(name = "resolved_at", nullable = true, columnDefinition = "datetime2(3)")
     private Instant resolvedAt;
 }
-

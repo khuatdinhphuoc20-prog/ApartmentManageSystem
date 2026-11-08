@@ -5,4 +5,3 @@ public enum IssueStatus {
     IN_PROGRESS,
     RESOLVED
 }
-
