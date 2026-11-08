@@ -11,7 +11,7 @@ import com.apartment.rental.contract.repository.ContractRepository;
 import com.apartment.rental.contract.service.ContractCoOccupantService;
 
 import com.apartment.rental.room.dto.response.RoomCapacityForM04Response;
-import com.apartment.rental.room.service.RoomServiceForM04;
+import com.apartment.rental.room.service.RoomService;
 import com.apartment.rental.contract.exception.*;
 
 
@@ -30,7 +30,7 @@ public class ContractCoOccupantServiceImpl
     private final ContractRepository contractRepository;
     private final ContractCoOccupantRepository coOccupantRepository;
     private final ContractCoOccupantMapper coOccupantMapper;
-    private final RoomServiceForM04 roomServiceForM04;
+    private final RoomService roomService;
 
 
     @Override
@@ -171,7 +171,7 @@ public class ContractCoOccupantServiceImpl
     private void validateRoomCapacity(Contract contract) {
 
         RoomCapacityForM04Response roomCapacity =
-                roomServiceForM04.getRoomCapacityForM04 (
+                roomService.getRoomCapacityForM04 (
                         contract.getRoom().getId()
                 );
 

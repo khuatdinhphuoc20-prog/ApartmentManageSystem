@@ -45,8 +45,10 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
             or (c.status = com.apartment.rental.contract.entity.ContractStatus.ENDED
                 and c.endReason = com.apartment.rental.contract.entity.ContractEndReason.NATURAL_EXPIRY)
             or (c.status = com.apartment.rental.contract.entity.ContractStatus.ENDED
-                and c.endReason = com.apartment.rental.contract.entity.ContractEndReason.TENANT_EARLY_EXIT
-                and c.finalBillingPeriodEndDate is null)
+                and c.endReason in (
+                    com.apartment.rental.contract.entity.ContractEndReason.TENANT_EARLY_EXIT,
+                    com.apartment.rental.contract.entity.ContractEndReason.ADMIN_STOP_SERVICE
+                ))
           )
         order by c.room.roomCode, c.id
         """)

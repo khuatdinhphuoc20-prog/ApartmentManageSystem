@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,17 +54,6 @@ public class ContractBillingQueryServiceImpl
                         || (contract.getStatus() == ContractStatus.ENDED
                         && contract.getEndReason() == ContractEndReason.NATURAL_EXPIRY)
 
-                        // Tenant kết thúc đúng ngày cuối kỳ:
-                        // vẫn xử lý bằng hóa đơn thường.
-                        || (contract.getStatus() == ContractStatus.ENDED
-                        && contract.getEndReason() == ContractEndReason.TENANT_EARLY_EXIT
-                        && contract.getFinalBillingPeriodEndDate() == null
-                        && isContractAnniversary(
-                        contract.getStartDate(),
-                        contract.getEffectiveEndDate()
-                ))
-
-                        // Hợp đồng kết thúc sớm, chờ nhập điện nước.
                         || (contract.getStatus() == ContractStatus.ENDED
                         && (contract.getEndReason() == ContractEndReason.TENANT_EARLY_EXIT
                         || contract.getEndReason() == ContractEndReason.ADMIN_STOP_SERVICE));
@@ -74,38 +62,13 @@ public class ContractBillingQueryServiceImpl
                 ? contract.getPlannedEndDate()
                 : contract.getEffectiveEndDate();
 
-        boolean earlyTermination =
-                contract.getStatus() == ContractStatus.ENDED
-                        && (contract.getEndReason() == ContractEndReason.TENANT_EARLY_EXIT
-                        || contract.getEndReason() == ContractEndReason.ADMIN_STOP_SERVICE);
+        boolean endedEarly = contract.getStatus() == ContractStatus.ENDED
+                && (contract.getEndReason() == ContractEndReason.TENANT_EARLY_EXIT
+                || contract.getEndReason() == ContractEndReason.ADMIN_STOP_SERVICE);
 
         return regularBillingStatus
-                && (
-                earlyTermination
-                        || (
-                        contract.getStartDate().isBefore(today)
-                                && contractEnd.isAfter(contract.getStartDate())
-                )
-        );
-    }
-
-    private boolean isContractAnniversary(
-            LocalDate startDate,
-            LocalDate endDate
-    ) {
-        if (startDate == null || endDate == null
-                || !endDate.isAfter(startDate)) {
-            return false;
-        }
-
-        YearMonth endMonth = YearMonth.from(endDate);
-
-        int anniversaryDay = Math.min(
-                startDate.getDayOfMonth(),
-                endMonth.lengthOfMonth()
-        );
-
-        return endDate.getDayOfMonth() == anniversaryDay;
+                && contractEnd.isAfter(contract.getStartDate())
+                && (endedEarly || contract.getStartDate().isBefore(today));
     }
 
     private ContractBillingResponse toBillingResponse(Contract contract) {
