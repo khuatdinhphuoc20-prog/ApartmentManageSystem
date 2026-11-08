@@ -6,11 +6,13 @@ import com.apartment.rental.contract.dto.request.DirectContractRequest;
 import com.apartment.rental.contract.dto.response.ContractBillingResponse;
 import com.apartment.rental.contract.dto.response.ContractDetailResponse;
 import com.apartment.rental.contract.dto.response.ContractResponse;
+import com.apartment.rental.contract.dto.response.ContractTerminationResult;
 import com.apartment.rental.contract.entity.ContractEndReason;
 import com.apartment.rental.contract.entity.ContractStatus;
 import com.apartment.rental.room.dto.response.RoomOptionForM04Response;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,10 +45,12 @@ public interface ContractService {
 
         void expireActiveContracts(LocalDate currentDate);
     // UC34: Admin chấm dứt hợp đồng đang ACTIVE
-    void terminateActiveContract(
+    ContractTerminationResult terminateActiveContract(
             Long contractId,
             Long adminId,
             ContractEndReason reason,
+            BigDecimal electricityAmount,
+            BigDecimal waterAmount,
             String closingNote
     );
     ContractDetailResponse createDirectContract(

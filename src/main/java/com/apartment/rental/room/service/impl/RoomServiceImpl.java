@@ -2,7 +2,11 @@ package com.apartment.rental.room.service.impl;
 
 import com.apartment.rental.contract.port.ContractQueryPort;
 import com.apartment.rental.room.dto.request.RoomRequest;
+import com.apartment.rental.room.dto.response.RoomCapacityForM04Response;
+import com.apartment.rental.room.dto.response.RoomOptionForM04Response;
 import com.apartment.rental.room.dto.response.RoomResponse;
+import com.apartment.rental.room.dto.response.RoomRentalInfoForM04Response;
+import com.apartment.rental.room.dto.response.RoomSummaryDto;
 import com.apartment.rental.room.dto.response.RoomSummaryResponse;
 import com.apartment.rental.room.entity.Room;
 import com.apartment.rental.room.entity.RoomStatus;
@@ -19,8 +23,11 @@ import com.apartment.rental.room.repository.RoomRepository;
 import com.apartment.rental.room.service.RoomService;
 import java.math.BigDecimal;
 import java.util.EnumMap;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -171,19 +178,18 @@ public class RoomServiceImpl implements RoomService, RoomQueryPort, RoomOccupanc
     @Override
     @Transactional
     public void releaseRoom(Long roomId, RoomStatus targetStatus) {
-        Room room = roomRepository.findById(roomId).orElseThrow(RoomNotFoundException::new);
+        if (targetStatus != RoomStatus.AVAILABLE && targetStatus != RoomStatus.INACTIVE) {
+            throw new InvalidRoomStateException("A released room must become AVAILABLE or INACTIVE");
+        }
+
+        Room room = roomRepository.findByIdForUpdate(roomId).orElseThrow(RoomNotFoundException::new);
 
         // Chỉ phòng đang RENTED mới được giải phóng
         if (room.getStatus() != RoomStatus.RENTED) {
             throw new InvalidRoomStateException("Chỉ có thể giải phóng phòng đang ở trạng thái RENTED");
         }
 
-        // Trạng thái đích không được là RENTED
-        if (targetStatus == RoomStatus.RENTED) {
-            throw new InvalidRoomStateException("Trạng thái sau khi giải phóng không thể là RENTED");
-        }
-
-        room.setStatus(targetStatus != null ? targetStatus : RoomStatus.AVAILABLE);
+        room.setStatus(targetStatus);
         roomRepository.save(room);
     }
 
@@ -212,6 +218,36 @@ public class RoomServiceImpl implements RoomService, RoomQueryPort, RoomOccupanc
     public Short getRoomCapacity(Long roomId) {
         Room room = roomRepository.findById(roomId).orElseThrow(RoomNotFoundException::new);
         return room.getCapacity();
+    }
+
+    @Override
+    public RoomCapacityForM04Response getRoomCapacityForM04(Long roomId) {
+        Room room = roomRepository.findById(roomId).orElseThrow(RoomNotFoundException::new);
+        return roomMapper.toCapacityResponse(room);
+    }
+
+    @Override
+    public RoomRentalInfoForM04Response getRoomRentalInfoForM04(Long roomId) {
+        Room room = roomRepository.findById(roomId).orElseThrow(RoomNotFoundException::new);
+        return roomMapper.toRentalInfoForM04Response(room);
+    }
+
+    @Override
+    public List<RoomOptionForM04Response> getAvailableRooms() {
+        return roomRepository.findAllByStatusOrderByRoomCodeAsc(RoomStatus.AVAILABLE)
+                .stream()
+                .map(roomMapper::toM04OptionResponse)
+                .toList();
+    }
+
+    @Override
+    public Map<Long, RoomSummaryDto> findByRoomIds(Collection<Long> roomIds) {
+        if (roomIds == null || roomIds.isEmpty()) {
+            return Map.of();
+        }
+        return roomRepository.findAllById(roomIds).stream()
+                .map(room -> new RoomSummaryDto(room.getId(), room.getRoomCode()))
+                .collect(Collectors.toMap(RoomSummaryDto::roomId, Function.identity()));
     }
 
     @Override

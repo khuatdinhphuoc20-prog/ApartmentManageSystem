@@ -54,6 +54,11 @@ public class SettlementCalculator {
         if (snapshot.reason() == ContractEndReason.TENANT_EARLY_EXIT
             && snapshot.contractStartDate().isBefore(snapshot.effectiveEndDate())) {
             if (snapshot.effectiveEndDate().equals(snapshot.periodEnd())) {
+                if (electricityAmount != null || waterAmount != null) {
+                    throw new IllegalArgumentException(
+                        "At a billing-cycle boundary, leave utility amounts blank; M05 handles the regular period"
+                    );
+                }
                 return regularRequired(snapshot, usageFrom, usedDays, monthlyRent);
             }
             if (snapshot.effectiveEndDate().equals(snapshot.periodStart())) {
@@ -90,7 +95,7 @@ public class SettlementCalculator {
             snapshot.contractId(),
             snapshot.reason(),
             snapshot.periodStart(),
-            snapshot.periodEnd(),
+            snapshot.effectiveEndDate(),
             usageFrom,
             snapshot.effectiveEndDate(),
             usedDays,
@@ -115,7 +120,7 @@ public class SettlementCalculator {
             snapshot.contractId(),
             snapshot.reason(),
             snapshot.periodStart(),
-            snapshot.periodEnd(),
+            snapshot.effectiveEndDate(),
             usageFrom,
             snapshot.effectiveEndDate(),
             usedDays,

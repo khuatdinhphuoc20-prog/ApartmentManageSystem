@@ -12,7 +12,6 @@ import java.time.ZoneId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Prepares M04 contract data exclusively for the UC34/UC35 settlement workflow. */
 @Service
 public class ContractSettlementQueryService {
 
@@ -24,18 +23,6 @@ public class ContractSettlementQueryService {
         this.contractRepository = contractRepository;
     }
 
-    /**
-     * Prepares calculation input without changing the contract, invoice or room.
-     *
-     * <p>The caller must supply an authoritative billing period agreed with M05;
-     * this method does not derive a day-of-month or a fixed-length billing cycle.
-     * Boundary dates are allowed for subsequent policy evaluation by M06.
-     *
-     * <p>This is a read-only preparation step, not the termination command. When
-     * completing the workflow, M04 must lock/revalidate the contract and coordinate
-     * invoice issuance and termination within its transaction. No settlement or
-     * duplicate-invoice checks are implied by receiving this snapshot.
-     */
     @Transactional(readOnly = true)
     public ContractSettlementSnapshot prepareSettlementInput(
         Long contractId,
@@ -43,10 +30,28 @@ public class ContractSettlementQueryService {
         LocalDate periodStart,
         LocalDate periodEnd
     ) {
+        return prepareSettlementInput(
+            contractId,
+            reason,
+            periodStart,
+            periodEnd,
+            LocalDate.now(BUSINESS_ZONE)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ContractSettlementSnapshot prepareSettlementInput(
+        Long contractId,
+        ContractEndReason reason,
+        LocalDate periodStart,
+        LocalDate periodEnd,
+        LocalDate effectiveEndDate
+    ) {
         validateRequest(contractId, reason, periodStart, periodEnd);
 
-        LocalDate effectiveEndDate = LocalDate.now(BUSINESS_ZONE);
-        if (effectiveEndDate.isBefore(periodStart) || effectiveEndDate.isAfter(periodEnd)) {
+        if (effectiveEndDate == null
+            || effectiveEndDate.isBefore(periodStart)
+            || effectiveEndDate.isAfter(periodEnd)) {
             throw new BusinessException("The settlement date must fall within the supplied period or on its boundary");
         }
 

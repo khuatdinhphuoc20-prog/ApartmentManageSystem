@@ -2,7 +2,7 @@ package com.apartment.rental.dashboard.service;
 
 import com.apartment.rental.dashboard.dto.AdminDashboardSummary;
 import com.apartment.rental.invoice.dto.InvoiceDashboardSummary;
-import com.apartment.rental.invoice.port.InvoiceDashboardQueryPort;
+import com.apartment.rental.invoice.service.InvoiceDashboardQueryService;
 import com.apartment.rental.issue.service.IssueService;
 import com.apartment.rental.room.entity.RoomStatus;
 import com.apartment.rental.room.port.RoomQueryPort;
@@ -15,22 +15,22 @@ import org.springframework.stereotype.Service;
 public class AdminDashboardService {
 
     private final RoomQueryPort roomQueryPort;
-    private final InvoiceDashboardQueryPort invoiceDashboardQueryPort;
+    private final InvoiceDashboardQueryService invoiceDashboardQueryService;
     private final IssueService issueService;
 
     public AdminDashboardService(
         RoomQueryPort roomQueryPort,
-        InvoiceDashboardQueryPort invoiceDashboardQueryPort,
+        InvoiceDashboardQueryService invoiceDashboardQueryService,
         IssueService issueService
     ) {
         this.roomQueryPort = roomQueryPort;
-        this.invoiceDashboardQueryPort = invoiceDashboardQueryPort;
+        this.invoiceDashboardQueryService = invoiceDashboardQueryService;
         this.issueService = issueService;
     }
 
     public AdminDashboardSummary loadSummary() {
         Map<RoomStatus, Long> roomCounts = roomQueryPort.countRoomsByStatus();
-        InvoiceDashboardSummary invoices = invoiceDashboardQueryPort.getDashboardSummary();
+        InvoiceDashboardSummary invoices = invoiceDashboardQueryService.getDashboardSummary();
         long unresolvedIssues = issueService.countUnresolvedIssues();
 
         long available = roomCounts.getOrDefault(RoomStatus.AVAILABLE, 0L);

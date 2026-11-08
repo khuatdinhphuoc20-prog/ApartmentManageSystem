@@ -10,21 +10,29 @@ import com.apartment.rental.contract.dto.request.DirectContractRequest;
 import com.apartment.rental.contract.dto.response.ContractBillingResponse;
 import com.apartment.rental.contract.dto.response.ContractDetailResponse;
 import com.apartment.rental.contract.dto.response.ContractResponse;
+import com.apartment.rental.contract.dto.response.ContractTerminationResult;
 import com.apartment.rental.contract.entity.Contract;
 import com.apartment.rental.contract.entity.ContractCoOccupant;
 import com.apartment.rental.contract.entity.ContractEndReason;
+import com.apartment.rental.contract.entity.FinalSettlementResult;
 import com.apartment.rental.contract.entity.ContractStatus;
 import com.apartment.rental.contract.mapper.ContractMapper;
 import com.apartment.rental.contract.repository.ContractCoOccupantRepository;
 import com.apartment.rental.contract.repository.ContractRepository;
 import com.apartment.rental.contract.service.ContractService;
+import com.apartment.rental.contract.service.ContractSettlementQueryService;
 import com.apartment.rental.contract.exception.*;
 
 import com.apartment.rental.room.dto.response.RoomCapacityForM04Response;
 import com.apartment.rental.room.dto.response.RoomOptionForM04Response;
 import com.apartment.rental.room.entity.Room;
 import com.apartment.rental.room.entity.RoomStatus;
-import com.apartment.rental.room.service.RoomServiceForM04;
+import com.apartment.rental.room.service.RoomService;
+import com.apartment.rental.invoice.dto.FinalSettlementPeriod;
+import com.apartment.rental.invoice.service.RegularInvoiceIssuanceService;
+import com.apartment.rental.settlement.dto.SettlementAction;
+import com.apartment.rental.settlement.dto.SettlementCalculationResult;
+import com.apartment.rental.settlement.service.SettlementCalculator;
 import jakarta.persistence.EntityManager;
 
 import com.apartment.rental.room.dto.response.RoomRentalInfoForM04Response;
@@ -32,8 +40,8 @@ import com.apartment.rental.room.dto.response.RoomRentalInfoForM04Response;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -55,9 +63,12 @@ public class ContractServiceImpl implements ContractService {
     private static final ZoneId BUSINESS_ZONE =
             ZoneId.of("Asia/Ho_Chi_Minh");
 
-    private final RoomServiceForM04 roomServiceForM04;
+    private final RoomService roomService;
     private final EntityManager entityManager;
     private final UserServiceForM04 userServiceForM04;
+    private final ContractSettlementQueryService contractSettlementQueryService;
+    private final SettlementCalculator settlementCalculator;
+    private final RegularInvoiceIssuanceService regularInvoiceIssuanceService;
 
     @Override
     public List<ContractBillingResponse> findEligibleContractsForRegularBilling(LocalDate today) {
@@ -84,25 +95,18 @@ public class ContractServiceImpl implements ContractService {
                 || (contract.getStatus() == ContractStatus.ENDED
                 && contract.getEndReason() == ContractEndReason.NATURAL_EXPIRY)
                 || (contract.getStatus() == ContractStatus.ENDED
-                && contract.getEndReason() == ContractEndReason.TENANT_EARLY_EXIT
-                && contract.getFinalBillingPeriodEndDate() == null
-                && isContractAnniversary(contract.getStartDate(), contract.getEffectiveEndDate()));
+                && (contract.getEndReason() == ContractEndReason.TENANT_EARLY_EXIT
+                || contract.getEndReason() == ContractEndReason.ADMIN_STOP_SERVICE));
 
         LocalDate contractEnd = contract.getEffectiveEndDate() == null
                 ? contract.getPlannedEndDate()
                 : contract.getEffectiveEndDate();
+        boolean endedEarly = contract.getStatus() == ContractStatus.ENDED
+                && (contract.getEndReason() == ContractEndReason.TENANT_EARLY_EXIT
+                || contract.getEndReason() == ContractEndReason.ADMIN_STOP_SERVICE);
         return regularBillingStatus
-                && contract.getStartDate().isBefore(today)
-                && contractEnd.isAfter(contract.getStartDate());
-    }
-
-    private boolean isContractAnniversary(LocalDate startDate, LocalDate endDate) {
-        if (startDate == null || endDate == null || !endDate.isAfter(startDate)) {
-            return false;
-        }
-        YearMonth endMonth = YearMonth.from(endDate);
-        int anniversaryDay = Math.min(startDate.getDayOfMonth(), endMonth.lengthOfMonth());
-        return endDate.getDayOfMonth() == anniversaryDay;
+                && contractEnd.isAfter(contract.getStartDate())
+                && (endedEarly || contract.getStartDate().isBefore(today));
     }
 
     private ContractBillingResponse toBillingResponse(Contract contract) {
@@ -197,9 +201,7 @@ public class ContractServiceImpl implements ContractService {
                 entityManager.getReference(User.class, adminId)
         );
 
-        roomServiceForM04.releaseRoomForM04(
-                contract.getRoom().getId()
-        );
+        roomService.releaseRoom(contract.getRoom().getId(), RoomStatus.AVAILABLE);
     }
 
 
@@ -245,16 +247,18 @@ public class ContractServiceImpl implements ContractService {
 
         for (Contract contract : contracts) {
             // Room becomes available, but final billing remains M05's duty.
-            roomServiceForM04.releaseRoomForM04(contract.getRoom().getId());
+            roomService.releaseRoom(contract.getRoom().getId(), RoomStatus.AVAILABLE);
         }
     }
 
     @Override
     @Transactional
-    public void terminateActiveContract(
+    public ContractTerminationResult terminateActiveContract(
             Long contractId,
             Long adminId,
             ContractEndReason reason,
+            BigDecimal electricityAmount,
+            BigDecimal waterAmount,
             String closingNote
     ) {
         Contract contract = contractRepository.findByIdForUpdate(contractId)
@@ -274,19 +278,73 @@ public class ContractServiceImpl implements ContractService {
             );
         }
 
-        // TODO UC34:
-        // 1. Gọi M06 để tính toán khoản thanh toán cuối kỳ.
-        // 2. Gọi M05 để tạo EARLY_SETTLEMENT hoặc NO_CHARGE.
-        // 3. Cập nhật thông tin kết thúc hợp đồng.
+        LocalDate effectiveEndDate = LocalDate.now(BUSINESS_ZONE);
+        if (!effectiveEndDate.isBefore(contract.getPlannedEndDate())) {
+            throw new BusinessException("Early termination must happen before the planned end date");
+        }
+
+        FinalSettlementPeriod billingPeriod = regularInvoiceIssuanceService.findPeriodForSettlement(
+                contract.getStartDate(),
+                contract.getPlannedEndDate(),
+                effectiveEndDate
+        );
+        var snapshot = contractSettlementQueryService.prepareSettlementInput(
+                contract.getId(),
+                reason,
+                billingPeriod.periodStart(),
+                billingPeriod.periodEnd(),
+                effectiveEndDate
+        );
+        SettlementCalculationResult calculation = settlementCalculator.calculate(
+                snapshot,
+                electricityAmount,
+                waterAmount
+        );
+
+        FinalSettlementResult persistedSettlement = null;
+        Long invoiceId = null;
+        boolean regularBillingRequired = calculation.action() == SettlementAction.REGULAR_REQUIRED;
+        if (!regularBillingRequired) {
+            Optional<Long> issuedInvoiceId = regularInvoiceIssuanceService.issueFinalSettlement(
+                    calculation,
+                    adminId
+            );
+            if (calculation.action() == SettlementAction.EARLY_SETTLEMENT_REQUIRED
+                    && issuedInvoiceId.isEmpty()) {
+                throw new IllegalStateException("M05 did not return the expected final Invoice");
+            }
+            if (calculation.action() == SettlementAction.NO_CHARGE
+                    && issuedInvoiceId.isPresent()) {
+                throw new IllegalStateException("M05 issued an Invoice for a zero-total settlement");
+            }
+
+            invoiceId = issuedInvoiceId.orElse(null);
+            persistedSettlement = invoiceId == null
+                    ? FinalSettlementResult.NO_CHARGE
+                    : FinalSettlementResult.INVOICED;
+            contract.setFinalBillingPeriodEndDate(effectiveEndDate);
+            contract.setFinalSettlementResult(persistedSettlement);
+            contract.setSettledAt(Instant.now().truncatedTo(ChronoUnit.MILLIS));
+        }
 
         contract.setStatus(ContractStatus.ENDED);
         contract.setEndReason(reason);
-        contract.setEffectiveEndDate(LocalDate.now(BUSINESS_ZONE));
-        contract.setEndedAt(Instant.now());
+        contract.setEffectiveEndDate(effectiveEndDate);
+        contract.setEndedAt(Instant.now().truncatedTo(ChronoUnit.MILLIS));
         contract.setClosedByUser(entityManager.getReference(User.class, adminId));
         contract.setClosingNote(closingNote);
 
-        roomServiceForM04.releaseRoomForM04(contract.getRoom().getId());
+        RoomStatus roomTargetStatus = reason == ContractEndReason.ADMIN_STOP_SERVICE
+                ? RoomStatus.INACTIVE
+                : RoomStatus.AVAILABLE;
+        roomService.releaseRoom(contract.getRoom().getId(), roomTargetStatus);
+
+        return new ContractTerminationResult(
+                effectiveEndDate,
+                persistedSettlement,
+                invoiceId,
+                regularBillingRequired
+        );
     }
     @Override
     @Transactional
@@ -319,7 +377,7 @@ public class ContractServiceImpl implements ContractService {
 
         // 3. Get room information
         RoomRentalInfoForM04Response roomInfo =
-                roomServiceForM04.getRoomRentalInfoForM04(request.getRoomId());
+                roomService.getRoomRentalInfoForM04(request.getRoomId());
 
         if (roomInfo.status() != RoomStatus.AVAILABLE) {
             throw new BusinessException("Room is not available");
@@ -377,7 +435,7 @@ public class ContractServiceImpl implements ContractService {
 
 // Get room capacity
         RoomCapacityForM04Response roomCapacity =
-                roomServiceForM04.getRoomCapacityForM04(request.getRoomId());
+                roomService.getRoomCapacityForM04(request.getRoomId());
 
         if (roomCapacity.capacity() == null
                 || roomCapacity.capacity() <= 0) {
@@ -418,7 +476,7 @@ public class ContractServiceImpl implements ContractService {
             );
         }
         // 5. Reserve room through M02
-        roomServiceForM04.reserveRoomForM04(request.getRoomId());
+        roomService.reserveRoom(request.getRoomId());
 
         // 6. Create contract
         Contract contract = new Contract();
@@ -484,7 +542,7 @@ public class ContractServiceImpl implements ContractService {
 
     @Override
     public List<RoomOptionForM04Response> getAvailableRooms() {
-        return roomServiceForM04.getAvailableRooms();
+        return roomService.getAvailableRooms();
     }
     @Override
     public List<ContractResponse> getAllContracts(
@@ -536,7 +594,7 @@ public class ContractServiceImpl implements ContractService {
 
         // 4. Get room information from M02
         RoomRentalInfoForM04Response roomInfo =
-                roomServiceForM04.getRoomRentalInfoForM04(request.roomId());
+                roomService.getRoomRentalInfoForM04(request.roomId());
 
         if (roomInfo.status() != RoomStatus.AVAILABLE) {
             throw new BusinessException("Room is not available");
@@ -550,7 +608,7 @@ public class ContractServiceImpl implements ContractService {
         }
 
         // 5. Reserve room through M02
-        roomServiceForM04.reserveRoomForM04(request.roomId());
+        roomService.reserveRoom(request.roomId());
 
         // 6. Create contract
         Contract contract = new Contract();

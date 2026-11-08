@@ -195,6 +195,65 @@
             </div>
         </div>
 
+        <!-- Early termination and final settlement -->
+        <div th:if="${contract.status.name() == 'ACTIVE'}"
+             class="card border-warning shadow-sm mt-4 mb-4">
+            <div class="card-header bg-warning-subtle py-3">
+                <h5 class="mb-0 fw-semibold">
+                    <i class="bi bi-door-open me-2"></i>
+                    Kết thúc hợp đồng trước hạn
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    Ngày kết thúc được ghi nhận là hôm nay. Hệ thống sẽ tính tiền kỳ cuối,
+                    ghi hóa đơn hoặc NO_CHARGE rồi mới giải phóng phòng.
+                </p>
+                <form th:action="@{/admin/contracts/{id}/terminate(id=${contract.id})}"
+                      th:object="${terminationRequest}"
+                      method="post"
+                      onsubmit="return confirm('Kết thúc hợp đồng và chốt kỳ cuối ngay hôm nay?')">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="termination-reason">Lý do kết thúc</label>
+                            <select id="termination-reason" class="form-select" th:field="*{reason}" required>
+                                <option value="">Chọn lý do</option>
+                                <option value="TENANT_EARLY_EXIT">Tenant chủ động trả phòng</option>
+                                <option value="ADMIN_STOP_SERVICE">Admin ngừng cung cấp phòng</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="termination-electricity">Tiền điện (đ)</label>
+                            <input id="termination-electricity" class="form-control" type="number"
+                                   min="0" step="1" th:field="*{electricityAmount}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="termination-water">Tiền nước (đ)</label>
+                            <input id="termination-water" class="form-control" type="number"
+                                   min="0" step="1" th:field="*{waterAmount}">
+                        </div>
+                        <div class="col-12">
+                            <div class="form-text">
+                                Nhập đủ điện/nước cho kết thúc giữa kỳ. Nếu Tenant trả đúng ranh giới kỳ đã dùng,
+                                để trống; M05 xử lý qua luồng hóa đơn REGULAR nếu kỳ đó chưa được chốt.
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="termination-note">Ghi chú</label>
+                            <textarea id="termination-note" class="form-control" rows="2"
+                                      maxlength="1000" th:field="*{closingNote}"></textarea>
+                        </div>
+                        <div class="col-12 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-check2-circle me-1"></i>
+                                Tính quyết toán và kết thúc
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Tenant information -->
         <div class="card border-0 shadow-sm mb-4">
 

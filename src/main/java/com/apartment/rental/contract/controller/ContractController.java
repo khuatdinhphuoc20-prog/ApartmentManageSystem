@@ -1,21 +1,26 @@
 package com.apartment.rental.contract.controller;
 
 import com.apartment.rental.contract.dto.request.ContractCoOccupantRequest;
+import com.apartment.rental.contract.dto.request.ContractTerminationRequest;
 import com.apartment.rental.contract.dto.request.DirectContractRequest;
 import com.apartment.rental.contract.dto.response.ContractDetailResponse;
+import com.apartment.rental.contract.dto.response.ContractTerminationResult;
 import com.apartment.rental.contract.entity.ContractEndReason;
 import com.apartment.rental.contract.entity.ContractStatus;
 import com.apartment.rental.contract.exception.BusinessException;
 import com.apartment.rental.contract.exception.ResourceNotFoundException;
 import com.apartment.rental.contract.service.ContractCoOccupantService;
 import com.apartment.rental.contract.service.ContractService;
+import com.apartment.rental.account.security.CustomUserDetails;
 import com.apartment.rental.room.dto.response.RoomCapacityForM04Response;
-import com.apartment.rental.room.service.RoomServiceForM04;
+import com.apartment.rental.room.service.RoomService;
 import jakarta.validation.Valid;
+import org.springframework.dao.DataIntegrityViolationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -29,7 +34,7 @@ import java.util.ArrayList;
 public class ContractController {
 
     private final ContractService contractService;
-    private final RoomServiceForM04 roomServiceForM04;
+    private final RoomService roomService;
     private final ContractCoOccupantService coOccupantService;
     @GetMapping
     public String showContractList(
@@ -117,8 +122,62 @@ public class ContractController {
                 "contract",
                 contractService.getContractDetail(id)
         );
+        model.addAttribute("terminationRequest", new ContractTerminationRequest());
 
         return "admin/contracts/detail";
+    }
+
+    @PostMapping("/{id}/terminate")
+    public String terminateActiveContract(
+            @PathVariable Long id,
+            @Valid @ModelAttribute("terminationRequest") ContractTerminationRequest request,
+            BindingResult bindingResult,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            RedirectAttributes redirectAttributes
+    ) {
+        if (bindingResult.hasErrors()) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    bindingResult.getAllErrors().get(0).getDefaultMessage()
+            );
+            return "redirect:/admin/contracts/" + id;
+        }
+
+        try {
+            ContractTerminationResult result = contractService.terminateActiveContract(
+                    id,
+                    userDetails.getUser().getId(),
+                    request.getReason(),
+                    request.getElectricityAmount(),
+                    request.getWaterAmount(),
+                    request.getClosingNote()
+            );
+            if (result.regularBillingRequired()) {
+                redirectAttributes.addFlashAttribute(
+                        "successMessage",
+                        "Đã kết thúc hợp đồng theo ranh giới kỳ thuê. Không tạo hóa đơn quyết toán sớm; kiểm tra M05 để xử lý hóa đơn định kỳ nếu kỳ này chưa được chốt."
+                );
+            } else if (result.invoiceId() != null) {
+                redirectAttributes.addFlashAttribute(
+                        "successMessage",
+                        "Đã kết thúc hợp đồng và phát hành hóa đơn quyết toán #" + result.invoiceId() + "."
+                );
+            } else {
+                redirectAttributes.addFlashAttribute(
+                        "successMessage",
+                        "Đã kết thúc hợp đồng. Kỳ cuối đã được ghi nhận là không phát sinh tiền."
+                );
+            }
+        } catch (BusinessException | ResourceNotFoundException
+                 | IllegalArgumentException | IllegalStateException exception) {
+            redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
+        } catch (DataIntegrityViolationException exception) {
+            redirectAttributes.addFlashAttribute(
+                    "errorMessage",
+                    "Kỳ thanh toán vừa được xử lý ở thao tác khác. Tải lại trang để xem trạng thái mới."
+            );
+        }
+        return "redirect:/admin/contracts/" + id;
     }
     @GetMapping("/{id}/edit")
     public String showEditContractForm(
@@ -273,7 +332,7 @@ public class ContractController {
         if (request.getRoomId() != null) {
             try {
                 RoomCapacityForM04Response capacity =
-                        roomServiceForM04.getRoomCapacityForM04(
+                        roomService.getRoomCapacityForM04(
                                 request.getRoomId()
                         );
 
