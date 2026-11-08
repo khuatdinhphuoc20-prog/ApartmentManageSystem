@@ -1,13 +1,18 @@
 package com.apartment.rental.application.controller;
 
+import com.apartment.rental.account.security.CustomUserDetails;
 import com.apartment.rental.application.dto.RentalApplicationCreateRequest;
 import com.apartment.rental.application.dto.RentalApplicationResponse;
 import com.apartment.rental.application.services.RentalApplicationService;
+import com.apartment.rental.room.dto.response.RoomResponse;
 import com.apartment.rental.room.entity.Room;
+import com.apartment.rental.room.entity.RoomStatus;
+import com.apartment.rental.room.port.RoomQueryPort;
 import jakarta.persistence.EntityManager;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -26,12 +31,13 @@ import java.util.List;
 public class CustomerApplicationController {
 
     private final RentalApplicationService applicationService;
-    private final EntityManager entityManager;
+    //private final EntityManager entityManager;
+    private final RoomQueryPort roomQueryPort;
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     @GetMapping
-    public String myApplications(Principal principal, Model model) {
-        Long currentUserId = resolveUserId(principal, "USER");
+    public String myApplications(@AuthenticationPrincipal CustomUserDetails userDetails, Model model) {
+        Long currentUserId = userDetails.getUser().getId();
         List<RentalApplicationResponse> applications = applicationService.getMyApplications(currentUserId);
         model.addAttribute("applications", applications);
         return "customer/applications";
@@ -39,23 +45,17 @@ public class CustomerApplicationController {
 
     @GetMapping("/apply/{roomId}")
     public String showApplyForm(@PathVariable Long roomId, Model model) {
-        Room room = entityManager.find(Room.class, roomId);
-        if (room == null) {
-            return "redirect:/?error=room_not_found";
+        RoomResponse room = roomQueryPort.getRoomDetail(roomId);
+
+        if (room == null || room.getStatus() != RoomStatus.AVAILABLE) {
+            return "redirect:/rooms?error=room_not_available";
         }
 
         LocalDate today = LocalDate.now(BUSINESS_ZONE);
         RentalApplicationCreateRequest request = new RentalApplicationCreateRequest();
         request.setRoomId(roomId);
         request.setRequestedStartDate(today);
-        request.setDurationMonths(1); // Mặc định gói 1 tháng
-
-        LocalDate defaultEndDate = today.plusMonths(1).withDayOfMonth(10);
-        if (!defaultEndDate.isAfter(today)) {
-            defaultEndDate = defaultEndDate.plusMonths(1);
-        }
-        request.setEndMonth(defaultEndDate.getMonthValue());
-        request.setEndYear(defaultEndDate.getYear());
+        request.setDurationMonths(1);
 
         model.addAttribute("room", room);
         model.addAttribute("applyRequest", request);
@@ -68,42 +68,30 @@ public class CustomerApplicationController {
     @PostMapping("/apply")
     public String submitApply(
             @Valid @ModelAttribute("applyRequest") RentalApplicationCreateRequest request,
-            BindingResult bindingResult, Principal principal,
-            Model model, RedirectAttributes redirectAttributes) {
+            BindingResult bindingResult,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            Model model,
+            RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
-            Room room = entityManager.find(Room.class, request.getRoomId());
+            RoomResponse room = roomQueryPort.getRoomDetail(request.getRoomId());
             model.addAttribute("room", room);
             LocalDate today = LocalDate.now(BUSINESS_ZONE);
             model.addAttribute("today", today);
             model.addAttribute("maxStartDate", today.plusDays(10));
+            model.addAttribute("currentYear", today.getYear());
             return "customer/apply";
         }
-        Long currentUserId = resolveUserId(principal, "USER");
+        Long currentUserId = userDetails.getUser().getId();
         applicationService.createApplication(request, currentUserId);
         redirectAttributes.addFlashAttribute("successMessage", "Gửi đơn đăng ký thuê phòng thành công!");
         return "redirect:/customer/applications";
     }
 
     @PostMapping("/{id}/withdraw")
-    public String withdraw(@PathVariable Long id, Principal principal, RedirectAttributes redirectAttributes) {
-        Long currentUserId = resolveUserId(principal, "USER");
+    public String withdraw(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails userDetails, RedirectAttributes redirectAttributes) {
+        Long currentUserId = userDetails.getUser().getId();
         applicationService.withdrawApplication(id, currentUserId);
-        redirectAttributes.addFlashAttribute("successMessage", "Huỷ đơn thành công!");
+        redirectAttributes.addFlashAttribute("successMessage", "Đã rút đơn đăng ký thuê thành công!");
         return "redirect:/customer/applications";
-    }
-
-    //Xoá sau khi có hàm lấy user
-    private Long resolveUserId(Principal principal, String role) {
-        if (principal != null) {
-            try {
-                List<Long> ids = entityManager.createQuery("SELECT u.id FROM User u WHERE u.email = :email", Long.class)
-                        .setParameter("email", principal.getName())
-                        .getResultList();
-                if (!ids.isEmpty()) {
-                    return ids.get(0);
-                }
-            } catch (Exception ignored) {}
-        }
-        return "ADMIN".equals(role) ? 1L : 2L;
     }
 }
