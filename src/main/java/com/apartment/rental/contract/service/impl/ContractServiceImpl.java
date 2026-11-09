@@ -270,14 +270,6 @@ public class ContractServiceImpl implements ContractService {
                     "Only active contracts can be terminated"
             );
         }
-
-        if (reason != ContractEndReason.TENANT_EARLY_EXIT
-                && reason != ContractEndReason.ADMIN_STOP_SERVICE) {
-            throw new BusinessException(
-                    "Invalid contract termination reason"
-            );
-        }
-
         LocalDate effectiveEndDate = LocalDate.now(BUSINESS_ZONE);
         if (!effectiveEndDate.isBefore(contract.getPlannedEndDate())) {
             throw new BusinessException("Early termination must happen before the planned end date");
@@ -309,14 +301,6 @@ public class ContractServiceImpl implements ContractService {
                     calculation,
                     adminId
             );
-            if (calculation.action() == SettlementAction.EARLY_SETTLEMENT_REQUIRED
-                    && issuedInvoiceId.isEmpty()) {
-                throw new IllegalStateException("M05 did not return the expected final Invoice");
-            }
-            if (calculation.action() == SettlementAction.NO_CHARGE
-                    && issuedInvoiceId.isPresent()) {
-                throw new IllegalStateException("M05 issued an Invoice for a zero-total settlement");
-            }
 
             invoiceId = issuedInvoiceId.orElse(null);
             persistedSettlement = invoiceId == null

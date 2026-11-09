@@ -32,7 +32,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     @EntityGraph(attributePaths = {"contract", "contract.room"})
     Optional<Invoice> findByIdAndContract_Tenant_Id(Long id, Long tenantId);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
+
     @Query("select invoice from Invoice invoice where invoice.id = :invoiceId and invoice.contract.tenant.id = :tenantId")
     Optional<Invoice> findByIdAndContract_Tenant_IdForUpdate(
         @Param("invoiceId") Long invoiceId,
@@ -44,7 +44,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     boolean existsByPaymentReference(String paymentReference);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
+
     @Query("select invoice from Invoice invoice where invoice.id = :id")
     Optional<Invoice> findByIdForUpdate(@Param("id") Long id);
 
