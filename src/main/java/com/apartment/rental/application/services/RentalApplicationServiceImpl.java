@@ -70,15 +70,10 @@ public class RentalApplicationServiceImpl implements RentalApplicationService {
             endDate = LocalDate.of(request.getEndYear(), request.getEndMonth(), 10);
         } else if (request.getEndMonth() != null || request.getEndYear() != null) {
             throw new RentalApplicationException.Validation("Vui lòng chọn đầy đủ cả tháng và năm kết thúc, hoặc để cả hai ở tùy chọn mặc định.");
-        } else if (request.getDurationMonths() != null && request.getDurationMonths() > 0) {
-            endDate = startDate.plusMonths(request.getDurationMonths()).withDayOfMonth(10);
-            if (!endDate.isAfter(startDate)) {
-                endDate = endDate.plusMonths(1);
-            }
-        } else if (request.getRequestedEndDate() != null) {
-            endDate = request.getRequestedEndDate().withDayOfMonth(10);
         } else {
-            endDate = startDate.plusMonths(1).withDayOfMonth(10);
+            int months = (request.getDurationMonths() != null && request.getDurationMonths() > 0)
+                    ? request.getDurationMonths() : 1;
+            endDate = startDate.plusMonths(months).withDayOfMonth(10);
             if (!endDate.isAfter(startDate)) {
                 endDate = endDate.plusMonths(1);
             }
