@@ -178,6 +178,29 @@
                 </tr>
                 </tbody>
             </table>
+            <!-- Thanh phân trang (Hiển thị khi tổng số trang > 1) -->
+            <div class="card-footer bg-white d-flex justify-content-between align-items-center py-3"
+                 th:if="${pageResult.totalPages > 1}">
+                <div class="small text-muted">
+                    Hiển thị trang <strong th:text="${pageResult.number + 1}"></strong> / <span th:text="${pageResult.totalPages}"></span>
+                    (Tổng số: <span th:text="${pageResult.totalElements}"></span> đơn)
+                </div>
+                <ul class="pagination pagination-sm mb-0">
+                    <!-- Nút Trang trước -->
+                    <li class="page-item" th:classappend="${pageResult.first} ? 'disabled'">
+                        <a class="page-link" th:href="@{/admin/applications(status=${filter.status}, roomId=${filter.roomId}, page=${pageResult.number - 1})}">Trước</a>
+                    </li>
+                    <!-- Danh sách số trang -->
+                    <li class="page-item" th:each="i : ${#numbers.sequence(0, pageResult.totalPages - 1)}"
+                        th:classappend="${pageResult.number == i} ? 'active'">
+                        <a class="page-link" th:href="@{/admin/applications(status=${filter.status}, roomId=${filter.roomId}, page=${i})}" th:text="${i + 1}"></a>
+                    </li>
+                    <!-- Nút Trang sau -->
+                    <li class="page-item" th:classappend="${pageResult.last} ? 'disabled'">
+                        <a class="page-link" th:href="@{/admin/applications(status=${filter.status}, roomId=${filter.roomId}, page=${pageResult.number + 1})}">Sau</a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 </section>
