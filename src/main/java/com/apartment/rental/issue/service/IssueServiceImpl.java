@@ -4,6 +4,8 @@ import com.apartment.rental.account.entity.User;
 import com.apartment.rental.account.exception.BusinessException;
 import com.apartment.rental.account.repository.UserRepository;
 import com.apartment.rental.contract.entity.Contract;
+import com.apartment.rental.contract.entity.ContractStatus;
+import com.apartment.rental.contract.repository.ContractRepository;
 import com.apartment.rental.issue.dto.request.CreateIssueRequest;
 import com.apartment.rental.issue.dto.request.UpdateIssueStatusRequest;
 import com.apartment.rental.issue.dto.response.ActiveContractOptionResponse;
@@ -31,11 +33,12 @@ public class IssueServiceImpl implements IssueService {
     private final IssueRepository issueRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final ContractRepository contractRepository;
 
     @Override
     @Transactional(readOnly = true)
     public List<ActiveContractOptionResponse> getActiveContractsForTenant(Long tenantId) {
-        return issueRepository.findActiveContractsByTenantId(tenantId)
+        return contractRepository.findAllByTenant_IdAndStatusOrderByRoom_RoomCodeAsc(tenantId, ContractStatus.ACTIVE)
                 .stream()
                 .map(c -> new ActiveContractOptionResponse(
                         c.getId(),
@@ -64,9 +67,9 @@ public class IssueServiceImpl implements IssueService {
         User reporter = userRepository.findById(reporterId)
                 .orElseThrow(() -> new BusinessException(404, "Không tìm thấy thông tin người dùng!"));
 
-        //Chỉ người đại diện có hợp đồng ACTIVE mới được gửi Issue mới
-        Contract activeContract = issueRepository
-                .findActiveContractByIdAndTenantId(request.getContractId(), reporterId)
+        // Chỉ người đại diện có hợp đồng ACTIVE mới được gửi Issue mới
+        Contract activeContract = contractRepository
+                .findByIdAndTenant_IdAndStatus(request.getContractId(), reporterId, ContractStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(
                         403,
                         "Chỉ người đại diện của hợp đồng đang hiệu lực (ACTIVE) mới được gửi phản ánh/yêu cầu sửa chữa!"
@@ -86,7 +89,7 @@ public class IssueServiceImpl implements IssueService {
     @Override
     @Transactional(readOnly = true)
     public List<IssueResponse> getMyIssues(Long reporterId) {
-        return issueRepository.findAllByReporterIdWithContractAndRoom(reporterId)
+        return issueRepository.findAllByReporter_IdOrderByCreatedAtDesc(reporterId)
                 .stream()
                 .map(this::toTenantResponse)
                 .toList();
@@ -95,7 +98,7 @@ public class IssueServiceImpl implements IssueService {
     @Override
     @Transactional(readOnly = true)
     public IssueResponse getMyIssueDetail(Long reporterId, Long issueId) {
-        Issue issue = issueRepository.findDetailByIdAndReporterId(issueId, reporterId)
+        Issue issue = issueRepository.findByIdAndReporter_Id(issueId, reporterId)
                 .orElseThrow(() -> new BusinessException(
                         404,
                         "Không tìm thấy phản ánh hoặc bạn không có quyền xem phản ánh này!"
@@ -116,7 +119,7 @@ public class IssueServiceImpl implements IssueService {
     @Override
     @Transactional(readOnly = true)
     public AdminIssueResponse getIssueDetailForAdmin(Long issueId) {
-        Issue issue = issueRepository.findAdminDetailById(issueId)
+        Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new BusinessException(404, "Không tìm thấy phản ánh #" + issueId + "!"));
         return toAdminResponse(issue);
     }
@@ -124,7 +127,7 @@ public class IssueServiceImpl implements IssueService {
     @Override
     @Transactional
     public boolean updateIssueByAdmin(Long issueId, Long adminUserId, UpdateIssueStatusRequest request) {
-        Issue issue = issueRepository.findAdminDetailById(issueId)
+        Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new BusinessException(404, "Không tìm thấy phản ánh #" + issueId + "!"));
 
         User adminUser = userRepository.findById(adminUserId)

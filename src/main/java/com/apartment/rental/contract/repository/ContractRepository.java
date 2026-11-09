@@ -92,4 +92,10 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
         @Param("keyword") String keyword,
         @Param("status") ContractStatus status
     );
+
+    @EntityGraph(attributePaths = {"room"})
+    List<Contract> findAllByTenant_IdAndStatusOrderByRoom_RoomCodeAsc(Long tenantId, ContractStatus status);
+
+    @EntityGraph(attributePaths = {"room"})
+    Optional<Contract> findByIdAndTenant_IdAndStatus(Long contractId, Long tenantId, ContractStatus status);
 }

@@ -37,7 +37,7 @@ public class ProfileController {
             @ModelAttribute("profile") @Valid UpdateProfileRequest request,
             BindingResult bindingResult,
             Model model) {
-        // Luôn giữ lại email gốc của tài khoản để hiển thị lại nếu form có lỗi validate
+
         request.setEmail(userDetails.getUsername());
 
         if (bindingResult.hasErrors()) {
