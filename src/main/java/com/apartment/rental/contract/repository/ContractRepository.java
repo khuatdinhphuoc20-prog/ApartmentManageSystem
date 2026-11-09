@@ -14,11 +14,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-/** Repository queries for contract management, regular billing, and settlement. */
+
 @Repository
 public interface ContractRepository extends JpaRepository<Contract, Long> {
 
-    // Candidate selection used by the settlement workflow.
+
     @EntityGraph(attributePaths = {"room", "tenant"})
     @Query("""
         select c from Contract c
@@ -34,7 +34,7 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
         @Param("cancelled") ContractStatus cancelled
     );
 
-    // Regular billing workflow from the local branch.
+
     @EntityGraph(attributePaths = {"room", "tenant"})
     @Query("""
         select c from Contract c
@@ -55,7 +55,6 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     List<Contract> findEligibleForRegularBilling(@Param("today") LocalDate today);
 
     @EntityGraph(attributePaths = {"room", "tenant"})
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Contract c where c.id = :id")
     Optional<Contract> findByIdForBillingUpdate(@Param("id") Long id);
 
@@ -72,7 +71,7 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
 
     List<Contract> findAllByStatusAndStartDateLessThanEqual(ContractStatus status, LocalDate date);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
+
     @Query("SELECT c FROM Contract c WHERE c.id = :contractId")
     Optional<Contract> findByIdForUpdate(@Param("contractId") Long contractId);
 

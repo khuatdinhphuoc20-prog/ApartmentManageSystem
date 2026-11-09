@@ -15,7 +15,7 @@ public interface BillingPeriodRepository extends JpaRepository<BillingPeriod, Lo
 
     Optional<BillingPeriod> findTopByContract_IdOrderByBillingPeriodEndDateDescIdDesc(Long contractId);
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
+
     @Query("select period from BillingPeriod period where period.contract.id = :contractId and period.billingPeriodEndDate = :periodEndDate")
     Optional<BillingPeriod> findByContract_IdAndBillingPeriodEndDateForUpdate(
         @Param("contractId") Long contractId,

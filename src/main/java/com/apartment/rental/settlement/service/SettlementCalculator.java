@@ -18,21 +18,7 @@ public class SettlementCalculator {
     private static final BigDecimal PRORATION_DIVISOR = BigDecimal.valueOf(30);
     private static final BigDecimal MAX_AMOUNT = new BigDecimal("9999999999999999999");
 
-    /**
-     * Calculates the last-period obligation from an authoritative M04 snapshot.
-     *
-     * <p>M04 validates ACTIVE status and today's business date before calling this
-     * method. This calculator checks the supplied dates but does not read a clock,
-     * derive billing cycles, inspect existing invoices or persist any result.
-     *
-     * <p>For a tenant exiting at a boundary after prior usage, the caller must
-     * supply the preceding period with periodEnd equal to effectiveEndDate. This
-     * yields REGULAR_REQUIRED, even if utilities have not been finalized yet.
-     * Other branches require both utility amounts; null is never treated as zero.
-     *
-     * @throws IllegalArgumentException if input is missing, inconsistent, outside
-     *     whole-VND storage limits, or refers to an unsupported termination reason
-     */
+
     public SettlementCalculationResult calculate(
         ContractSettlementSnapshot snapshot,
         BigDecimal electricityAmount,

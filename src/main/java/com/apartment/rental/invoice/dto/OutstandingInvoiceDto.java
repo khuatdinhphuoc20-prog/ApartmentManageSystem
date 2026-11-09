@@ -3,7 +3,7 @@ package com.apartment.rental.invoice.dto;
 import com.apartment.rental.invoice.entity.InvoiceStatus;
 import java.math.BigDecimal;
 
-/** Data shown for one unpaid or overdue invoice on the admin page. */
+
 public record OutstandingInvoiceDto(
     Long invoiceId,
     String roomCode,

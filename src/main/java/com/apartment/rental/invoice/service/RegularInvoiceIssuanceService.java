@@ -112,7 +112,7 @@ public class RegularInvoiceIssuanceService {
         return Optional.of(invoiceId);
     }
 
-    /** Determines the contract-anchored period used for an early settlement. */
+
     public FinalSettlementPeriod findPeriodForSettlement(
         LocalDate contractStartDate,
         LocalDate plannedEndDate,
@@ -140,7 +140,7 @@ public class RegularInvoiceIssuanceService {
         return new FinalSettlementPeriod(periodStart, periodEnd);
     }
 
-    /** Persists M06's final result as a BillingPeriod and, when payable, an Invoice. */
+
     @Transactional
     public Optional<Long> issueFinalSettlement(
         SettlementCalculationResult calculation,
